@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct Treasure {
     pub x: i32,
     pub y: i32,

@@ -12,6 +12,9 @@ pub use cloud::*;
 mod confetti;
 pub use confetti::*;
 
+mod multiplayer_dungeon;
+pub use multiplayer_dungeon::*;
+
 mod direction;
 pub use direction::*;
 

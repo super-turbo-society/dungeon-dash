@@ -1,7 +1,7 @@
 use super::*;
 use std::f32::consts::PI;
 
-pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
+pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeon) {
     // Size constants
     let [w, h] = canvas_size!();
     let menubar_h = 40;
@@ -72,33 +72,35 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
     // Update turn
     state.turn.set(dungeon.turn);
 
-    // Update achievements modal
-    if dungeon.player.health == 0
-        && state.turn.done()
-        && state.last_crawl_achievements_modal != dungeon.crawl_id
-        && state.achievements_modal.is_none()
-        && !dungeon.unlocked.is_empty()
-    {
-        let modal = AchievementsModal::new(&dungeon.unlocked.achievement_kinds());
-        state.achievements_modal = Some(modal);
-        state.last_crawl_achievements_modal = dungeon.crawl_id;
-    }
+    // // Update achievements modal
+    // if dungeon.player.health == 0
+    //     && state.turn.done()
+    //     && state.last_crawl_achievements_modal != dungeon.crawl_id
+    //     && state.achievements_modal.is_none()
+    //     && !dungeon.unlocked.is_empty()
+    // {
+    //     let modal = AchievementsModal::new(&dungeon.unlocked.achievement_kinds());
+    //     state.achievements_modal = Some(modal);
+    //     state.last_crawl_achievements_modal = dungeon.crawl_id;
+    // }
 
     // Update player tweens
-    state.players[0].x.set(dungeon.player.x * TILE_SIZE);
-    state.players[0].y.set(dungeon.player.y * TILE_SIZE);
+    for (i, ctx) in dungeon.player.players.values().enumerate() {
+        state.players[i].x.set(ctx.player.x * TILE_SIZE);
+        state.players[i].y.set(ctx.player.y * TILE_SIZE);
 
-    // Player "nudge" animation
-    if (!state.players[0].y.done() || !state.players[0].x.done())
-        && state.players[0].offset_y.done()
-    {
-        state.players[0].offset_y.set(-MOVE_Y_OFFSET);
-    }
-    if state.players[0].offset_x.done() && state.players[0].offset_x.get() != 0 {
-        state.players[0].offset_x.set(0);
-    }
-    if state.players[0].offset_y.done() && state.players[0].offset_y.get() != 0 {
-        state.players[0].offset_y.set(0);
+        // Player "nudge" animation
+        if (!state.players[i].y.done() || !state.players[i].x.done())
+            && state.players[i].offset_y.done()
+        {
+            state.players[i].offset_y.set(-MOVE_Y_OFFSET);
+        }
+        if state.players[i].offset_x.done() && state.players[i].offset_x.get() != 0 {
+            state.players[i].offset_x.set(0);
+        }
+        if state.players[i].offset_y.done() && state.players[i].offset_y.get() != 0 {
+            state.players[i].offset_y.set(0);
+        }
     }
 
     // Update monster tweens
@@ -122,120 +124,146 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
             })
         }
     }
-    if state.players[0].is_idle() {
-        for (monster, entity) in dungeon
-            .monsters
-            .iter()
-            .zip(state.monsters.iter_mut())
-            .collect::<Vec<(_, _)>>()
-        {
-            entity.x.set(monster.x * TILE_SIZE);
-            entity.y.set(monster.y * TILE_SIZE);
+    for (i, ctx) in dungeon.player.players.values().enumerate() {
+        if state.players[i].is_idle() {
+            for (monster, entity) in dungeon
+                .monsters
+                .iter()
+                .zip(state.monsters.iter_mut())
+                .collect::<Vec<(_, _)>>()
+            {
+                entity.x.set(monster.x * TILE_SIZE);
+                entity.y.set(monster.y * TILE_SIZE);
 
-            // Monster "nudge" animation
-            if !state.turn.done() && entity.x.done() && entity.y.done() {
-                let is_player_on_exit =
-                    dungeon.exit.unwrap_or((-1, -1)) == (dungeon.player.x, dungeon.player.y);
-                let is_monster_stunned = monster.stun_dur > 0;
-                if !is_player_on_exit && !is_monster_stunned {
-                    match monster.direction {
-                        Direction::Up => {
-                            if dungeon.is_player(monster.x, monster.y - 1) {
-                                entity.offset_y.set(-MOVE_Y_OFFSET);
+                // Monster "nudge" animation
+                if !state.turn.done() && entity.x.done() && entity.y.done() {
+                    let is_player_on_exit =
+                        dungeon.exit.unwrap_or((-1, -1)) == (ctx.player.x, ctx.player.y);
+                    let is_monster_stunned = monster.stun_dur > 0;
+                    if !is_player_on_exit && !is_monster_stunned {
+                        match monster.direction {
+                            Direction::Up => {
+                                if dungeon.is_player(monster.x, monster.y - 1) {
+                                    entity.offset_y.set(-MOVE_Y_OFFSET);
+                                }
                             }
-                        }
-                        Direction::Down => {
-                            if dungeon.is_player(monster.x, monster.y + 1) {
-                                entity.offset_y.set(MOVE_Y_OFFSET);
+                            Direction::Down => {
+                                if dungeon.is_player(monster.x, monster.y + 1) {
+                                    entity.offset_y.set(MOVE_Y_OFFSET);
+                                }
                             }
-                        }
-                        Direction::Left => {
-                            if dungeon.is_player(monster.x - 1, monster.y) {
-                                entity.offset_x.set(-MOVE_X_OFFSET);
+                            Direction::Left => {
+                                if dungeon.is_player(monster.x - 1, monster.y) {
+                                    entity.offset_x.set(-MOVE_X_OFFSET);
+                                }
                             }
-                        }
-                        Direction::Right => {
-                            if dungeon.is_player(monster.x + 1, monster.y) {
-                                entity.offset_x.set(MOVE_X_OFFSET);
+                            Direction::Right => {
+                                if dungeon.is_player(monster.x + 1, monster.y) {
+                                    entity.offset_x.set(MOVE_X_OFFSET);
+                                }
                             }
                         }
                     }
                 }
-            }
-            if (!entity.y.done() || !entity.x.done()) && entity.offset_y.done() {
-                entity.offset_y.set(-MOVE_Y_OFFSET);
-            }
-            if entity.offset_x.done() && entity.offset_x.get() != 0 {
-                entity.offset_x.set(0);
-            }
-            if entity.offset_y.done() && entity.offset_y.get() != 0 {
-                entity.offset_y.set(0);
+                if (!entity.y.done() || !entity.x.done()) && entity.offset_y.done() {
+                    entity.offset_y.set(-MOVE_Y_OFFSET);
+                }
+                if entity.offset_x.done() && entity.offset_x.get() != 0 {
+                    entity.offset_x.set(0);
+                }
+                if entity.offset_y.done() && entity.offset_y.get() != 0 {
+                    entity.offset_y.set(0);
+                }
             }
         }
     }
 
-    // let did_turn_transition_end = state.turn.done();
-    // let was_last_exec_on_diff_turn = state.last_exec_turn.map_or(true, |t| t != dungeon.turn);
+    let Some(ctx) = dungeon.player.get(&user_id) else {
+        text!("Player not in dungeon", absolute = true);
+        return;
+    };
+    let Some(player_index) = dungeon.player.get_index(&user_id) else {
+        return;
+    };
+    let did_turn_transition_end = state.turn.done();
+    let was_last_exec_on_diff_turn = state.last_exec_turn.map_or(true, |t| t != dungeon.turn);
     let did_exec_timeout = (tick() - state.last_exec_at) >= EXEC_TIMEOUT_DUR;
-    // let is_ready_to_exec =
-    //     did_turn_transition_end && (was_last_exec_on_diff_turn || did_exec_timeout);
-    let is_ready_to_exec = did_exec_timeout;
-    let is_alive = dungeon.player.health > 0;
+    let is_ready_to_exec =
+        did_turn_transition_end && (was_last_exec_on_diff_turn || did_exec_timeout);
+    let is_alive = ctx.player.health > 0;
+    let can_move_this_round = ctx.next_round == dungeon.round;
 
     // Handle player input
     let gp = gamepad(0);
 
     // Hard reset game
     if gp.start.just_pressed() && gp.select.pressed() {
-        client::commands::create_new_dungeon::exec(true);
+        client::commands::reset_multiplayer_dungeon::exec(dungeon.crawl_id);
         state.last_exec_at = tick();
         state.last_exec_turn = Some(dungeon.turn);
+        state.show_stats_modal = false;
     }
     // Dungeon controls
     else if is_ready_to_exec {
         // Next floor or restart
         if gp.start.just_pressed() && state.achievements_modal.is_none() {
-            client::commands::create_new_dungeon::exec(dungeon.player.health == 0);
+            if dungeon.did_all_players_die() {
+                client::commands::start_new_multiplayer_dungeon::exec();
+            } else {
+                client::commands::ascend_multiplayer_dungeon::exec(dungeon.crawl_id);
+            }
             state.last_exec_at = tick();
             state.last_exec_turn = Some(dungeon.turn);
         }
         // Move
-        else if gp.up.pressed() && is_alive {
-            client::commands::move_player::exec(Direction::Up);
+        else if gp.up.pressed() && is_alive && can_move_this_round {
+            client::commands::move_multiplayer_dungeon_player::exec(
+                dungeon.crawl_id,
+                Direction::Up,
+            );
             state.last_exec_at = tick();
             state.last_exec_turn = Some(dungeon.turn);
-            if dungeon.is_position_blocked(dungeon.player.x, dungeon.player.y - 1) {
-                state.players[0].offset_y.set(-MOVE_Y_OFFSET);
+            if dungeon.is_position_blocked(ctx.player.x, ctx.player.y - 1) {
+                state.players[player_index].offset_y.set(-MOVE_Y_OFFSET);
             }
-        } else if gp.down.pressed() && is_alive {
-            client::commands::move_player::exec(Direction::Down);
+        } else if gp.down.pressed() && is_alive && can_move_this_round {
+            client::commands::move_multiplayer_dungeon_player::exec(
+                dungeon.crawl_id,
+                Direction::Down,
+            );
             state.last_exec_at = tick();
             state.last_exec_turn = Some(dungeon.turn);
-            if dungeon.is_position_blocked(dungeon.player.x, dungeon.player.y + 1) {
-                state.players[0].offset_y.set(MOVE_Y_OFFSET);
+            if dungeon.is_position_blocked(ctx.player.x, ctx.player.y + 1) {
+                state.players[player_index].offset_y.set(MOVE_Y_OFFSET);
             }
-        } else if gp.left.pressed() && is_alive {
-            client::commands::move_player::exec(Direction::Left);
+        } else if gp.left.pressed() && is_alive && can_move_this_round {
+            client::commands::move_multiplayer_dungeon_player::exec(
+                dungeon.crawl_id,
+                Direction::Left,
+            );
             state.last_exec_at = tick();
             state.last_exec_turn = Some(dungeon.turn);
-            if dungeon.is_position_blocked(dungeon.player.x - 1, dungeon.player.y) {
-                state.players[0].offset_x.set(-MOVE_X_OFFSET);
+            if dungeon.is_position_blocked(ctx.player.x - 1, ctx.player.y) {
+                state.players[player_index].offset_x.set(-MOVE_X_OFFSET);
             }
-        } else if gp.right.pressed() && is_alive {
-            client::commands::move_player::exec(Direction::Right);
+        } else if gp.right.pressed() && is_alive && can_move_this_round {
+            client::commands::move_multiplayer_dungeon_player::exec(
+                dungeon.crawl_id,
+                Direction::Right,
+            );
             state.last_exec_at = tick();
             state.last_exec_turn = Some(dungeon.turn);
-            if dungeon.is_position_blocked(dungeon.player.x + 1, dungeon.player.y) {
-                state.players[0].offset_x.set(MOVE_X_OFFSET);
+            if dungeon.is_position_blocked(ctx.player.x + 1, ctx.player.y) {
+                state.players[player_index].offset_x.set(MOVE_X_OFFSET);
             }
         }
     }
 
     // Center camera on player
     set_cam!(
-        x = state.players[0].x.get() + (TILE_SIZE / 2),
+        x = state.players[player_index].x.get() + (TILE_SIZE / 2),
         y = {
-            let n = state.players[0].y.get() + (TILE_SIZE / 2) + menubar_h;
+            let n = state.players[player_index].y.get() + (TILE_SIZE / 2) + menubar_h;
             let n = n as f32 + ((tick() as f32 / 16.).cos() * 2.) - 2.;
             n.round()
         },
@@ -283,38 +311,45 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         }
     }
 
-    // Draw player
-    if dungeon.player.health > 0 {
-        let x = state.players[0].x.get();
-        let y = state.players[0].y.get();
-        sprite!(
-            "dotted_tile_border",
-            x = x,
-            y = y,
-            opacity = 0.25,
-            fps = fps::FAST,
-        );
-        let x = x + state.players[0].offset_x.get();
-        // let y = y - 9;
-        ellipse!(
-            x = x + 2,
-            y = y + 3,
-            w = TILE_SIZE - 4,
-            h = TILE_SIZE - 4,
-            color = SHADOW_COLOR,
-        );
-        let y = y + state.players[0].offset_y.get() - 4;
-        sprite!("hero", x = x, y = y, fps = fps::FAST);
-        // if user_id == "00000000-0000-0000-0000-000000000000" {
-        if user_id == "79d09d42-6f28-4a3c-a99d-1a8544da9572" {
-            sprite!("crown", x = x, y = y, fps = fps::FAST);
+    // Draw players
+    for (i, (player_id, ctx)) in dungeon.player.players.iter().enumerate() {
+        if ctx.player.health > 0 {
+            let x = state.players[i].x.get();
+            let y = state.players[i].y.get();
+            if player_id == user_id {
+                sprite!(
+                    "dotted_tile_border",
+                    x = x,
+                    y = y,
+                    opacity = 0.25,
+                    fps = fps::FAST,
+                );
+            }
+            let x = x + state.players[i].offset_x.get();
+            // let y = y - 9;
+            ellipse!(
+                x = x + 2,
+                y = y + 3,
+                w = TILE_SIZE - 4,
+                h = TILE_SIZE - 4,
+                color = SHADOW_COLOR,
+            );
+            let y = y + state.players[i].offset_y.get() - 4;
+            sprite!("hero", x = x, y = y, fps = fps::FAST);
+            if ctx.next_round > dungeon.round {
+                sprite!("hero", x = x, y = y, fps = fps::FAST, color = 0x000000cc);
+            }
+            // if user_id == "00000000-0000-0000-0000-000000000000" {
+            if user_id == "79d09d42-6f28-4a3c-a99d-1a8544da9572" {
+                sprite!("crown", x = x, y = y, fps = fps::FAST);
+            }
+        } else {
+            sprite!(
+                "tombstone",
+                x = state.players[i].x.get(),
+                y = state.players[i].y.get() - 5,
+            );
         }
-    } else {
-        sprite!(
-            "tombstone",
-            x = state.players[0].x.get(),
-            y = state.players[0].y.get() - 5,
-        );
     }
 
     // Draw monsters
@@ -764,97 +799,97 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         }
     }
 
-    // Draw Leaderboards
-    if dungeon.player.health == 0 && state.turn.done() {
-        if let Some(user_id) = &os::client::user_id() {
-            if gp.right.just_pressed() {
-                state.leaderboard_kind = state.leaderboard_kind.prev();
-            }
-            if gp.left.just_pressed() {
-                state.leaderboard_kind = state.leaderboard_kind.next();
-            }
-            if let Ok(leaderboard) = client::queries::global_leaderboard::fetch() {
-                rect!(absolute = true, w = w, h = h, color = 0x000000fa);
+    // // Draw Leaderboards
+    // if dungeon.did_all_players_die() && state.turn.done() {
+    //     if let Some(user_id) = &os::client::user_id() {
+    //         if gp.right.just_pressed() {
+    //             state.leaderboard_kind = state.leaderboard_kind.prev();
+    //         }
+    //         if gp.left.just_pressed() {
+    //             state.leaderboard_kind = state.leaderboard_kind.next();
+    //         }
+    //         if let Ok(leaderboard) = client::queries::global_leaderboard::fetch() {
+    //             rect!(absolute = true, w = w, h = h, color = 0x000000fa);
 
-                let slide_dot_y = h as i32 - (menubar_h + 34);
-                let dot_spacing = 8;
-                let start_x =
-                    (w as i32 / 2) - (LeaderboardKind::ALL.len() as i32 * dot_spacing / 2);
+    //             let slide_dot_y = h as i32 - (menubar_h + 34);
+    //             let dot_spacing = 8;
+    //             let start_x =
+    //                 (w as i32 / 2) - (LeaderboardKind::ALL.len() as i32 * dot_spacing / 2);
 
-                for (i, kind) in LeaderboardKind::ALL.iter().enumerate() {
-                    circ!(
-                        absolute = true,
-                        d = 6,
-                        x = start_x + (i as i32 * dot_spacing),
-                        y = slide_dot_y,
-                        color = 0xacaabdff,
-                        border_width = if state.leaderboard_kind == *kind {
-                            0
-                        } else {
-                            1
-                        },
-                        border_color = 0,
-                    );
-                }
+    //             for (i, kind) in LeaderboardKind::ALL.iter().enumerate() {
+    //                 circ!(
+    //                     absolute = true,
+    //                     d = 6,
+    //                     x = start_x + (i as i32 * dot_spacing),
+    //                     y = slide_dot_y,
+    //                     color = 0xacaabdff,
+    //                     border_width = if state.leaderboard_kind == *kind {
+    //                         0
+    //                     } else {
+    //                         1
+    //                     },
+    //                     border_color = 0,
+    //                 );
+    //             }
 
-                let leaderboard_x = 0;
-                let leaderboard_y = 0;
-                text!(
-                    "LEADERBOARD",
-                    absolute = true,
-                    x = leaderboard_x + 8,
-                    y = 7,
-                    font = Font::L
-                );
+    //             let leaderboard_x = 0;
+    //             let leaderboard_y = 0;
+    //             text!(
+    //                 "LEADERBOARD",
+    //                 absolute = true,
+    //                 x = leaderboard_x + 8,
+    //                 y = 7,
+    //                 font = Font::L
+    //             );
 
-                let mut i = 2; // Initial y position index for leaderboard text
-                match state.leaderboard_kind {
-                    #[rustfmt::skip]
-                        LeaderboardKind::HighestFloor => {
-                            text!("Highest Floor", absolute = true, x = leaderboard_x + 8, y = i * 10);
-                            i += 1;
-                            let leaderboard_y = leaderboard_y + 4;
-                            text!("#  PLAYER {:>7} FLOOR", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
-                            i += 1;
-                            leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
-                        }
-                    #[rustfmt::skip]
-                        LeaderboardKind::MostGold => {
-                            text!("Most Gold", absolute = true, x = leaderboard_x + 8, y = i * 10);
-                            i += 1;
-                            let leaderboard_y = leaderboard_y + 4;
-                            text!("#  PLAYER {:>8} GOLD", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
-                            i += 1;
-                            leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
-                        }
-                    #[rustfmt::skip]
-                        LeaderboardKind::MostKills => {
-                            text!("Most Kills", absolute = true, x = leaderboard_x + 8, y = i * 10);
-                            i += 1;
-                            let leaderboard_y = leaderboard_y + 4;
-                            text!("#  PLAYER {:>7} KILLS", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
-                            i += 1;
-                            leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
-                        }
-                    #[rustfmt::skip]
-                        LeaderboardKind::LeastSteps => {
-                            text!("Least Steps", absolute = true, x = leaderboard_x + 8, y = i * 10);
-                            i += 1;
-                            let leaderboard_y = leaderboard_y + 4;
-                            text!("#  PLAYER {:>7} STEPS", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
-                            i += 1;
-                            leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
-                        }
-                }
-            }
-        }
-    }
+    //             let mut i = 2; // Initial y position index for leaderboard text
+    //             match state.leaderboard_kind {
+    //                 #[rustfmt::skip]
+    //                     LeaderboardKind::HighestFloor => {
+    //                         text!("Highest Floor", absolute = true, x = leaderboard_x + 8, y = i * 10);
+    //                         i += 1;
+    //                         let leaderboard_y = leaderboard_y + 4;
+    //                         text!("#  PLAYER {:>7} FLOOR", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
+    //                         i += 1;
+    //                         leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
+    //                     }
+    //                 #[rustfmt::skip]
+    //                     LeaderboardKind::MostGold => {
+    //                         text!("Most Gold", absolute = true, x = leaderboard_x + 8, y = i * 10);
+    //                         i += 1;
+    //                         let leaderboard_y = leaderboard_y + 4;
+    //                         text!("#  PLAYER {:>8} GOLD", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
+    //                         i += 1;
+    //                         leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
+    //                     }
+    //                 #[rustfmt::skip]
+    //                     LeaderboardKind::MostKills => {
+    //                         text!("Most Kills", absolute = true, x = leaderboard_x + 8, y = i * 10);
+    //                         i += 1;
+    //                         let leaderboard_y = leaderboard_y + 4;
+    //                         text!("#  PLAYER {:>7} KILLS", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
+    //                         i += 1;
+    //                         leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
+    //                     }
+    //                 #[rustfmt::skip]
+    //                     LeaderboardKind::LeastSteps => {
+    //                         text!("Least Steps", absolute = true, x = leaderboard_x + 8, y = i * 10);
+    //                         i += 1;
+    //                         let leaderboard_y = leaderboard_y + 4;
+    //                         text!("#  PLAYER {:>7} STEPS", ""; absolute = true, x = leaderboard_x + 8, y = leaderboard_y + i * 10);
+    //                         i += 1;
+    //                         leaderboard.render_entries(dungeon.crawl_id, i, state.leaderboard_kind, user_id, leaderboard_x, leaderboard_y);
+    //                     }
+    //             }
+    //         }
+    //     }
+    // }
 
     // Generate new particles at random intervals
     let max_particle_size = 16.;
-    let amount_percent = dungeon.player.health as f32 / dungeon.player.max_health as f32;
+    let amount_percent = ctx.player.health as f32 / ctx.player.max_health as f32;
     let should_add_particle = rand() % (1 + (8. * amount_percent) as u32) == 0;
-    if should_add_particle && dungeon.player.health > 0 {
+    if should_add_particle && ctx.player.health > 0 {
         let is_black = rand() % 3 == 0;
         let color = if is_black {
             0x000000ff
@@ -965,20 +1000,21 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
     // HP
     sprite!("full_heart", absolute = true, y = y);
     let y = y + 4;
-    let hp_color: u32 = match dungeon.player.health as f32 / dungeon.player.max_health as f32 {
+    let hp_color: u32 = match ctx.player.health as f32 / ctx.player.max_health as f32 {
         0.75..=1.0 => 0x71f341ff,
         0.25..=0.75 => 0xffa200ff,
         _ => 0xb41c39ff,
     };
-    text!("  {:0>2}/  ", dungeon.player.health; absolute = true, x = 0, y = y, font = Font::L, color = hp_color);
-    text!("    /{:0>2}", dungeon.player.max_health; absolute = true, x = 0, y = y, font = Font::L);
+    text!("  {:0>2}/  ", ctx.player.health; absolute = true, x = 0, y = y, font = Font::L, color = hp_color);
+    text!("    /{:0>2}", ctx.player.max_health; absolute = true, x = 0, y = y, font = Font::L);
     let y = y + 8;
 
     // Gold
     sprite!("coin", absolute = true, y = y);
-    text!("  ${:0>4}", dungeon.player.gold; absolute = true, x = 0, y = y + 5, font = Font::L);
+    text!("  ${:0>4}", ctx.player.gold; absolute = true, x = 0, y = y + 5, font = Font::L);
 
-    if dungeon.player.health == 0 {
+    // Allow owner to reset
+    if ctx.player.health == 0 && dungeon.owner == user_id {
         let t = tick() as f32;
         let cos_16 = ((t / 16.).cos()) + 1.;
         let action_btn_x = w / 2;
@@ -1031,7 +1067,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
             font = Font::M,
         );
 
-        // Handle next floor click / tap
+        // Handle reset click / tap
         let m = mouse(0);
         let [mx, my] = m.position;
         let mx = (mx - (cam!().0)) + (w / 2) as i32;
@@ -1043,11 +1079,11 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         let is_in_btn = mx >= hit_x0 && mx < hit_x1 && my >= hit_y0 && my < hit_y1;
         let is_modal_closed = state.achievements_modal.is_none();
         if m.left.just_pressed() && is_in_btn && is_modal_closed {
-            client::commands::create_new_dungeon::exec(true);
+            client::commands::reset_multiplayer_dungeon::exec(dungeon.crawl_id);
         }
     }
     // Next floor button
-    else if dungeon.is_exit(dungeon.player.x, dungeon.player.y) {
+    else if dungeon.is_exit(ctx.player.x, ctx.player.y) {
         let t = tick() as f32;
         let cos_16 = ((t / 16.).cos()) + 1.;
         let action_btn_x = w / 2;
@@ -1111,7 +1147,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         let hit_y1 = (action_btn_y + action_btn_h) as i32;
         let is_in_btn = mx >= hit_x0 && mx < hit_x1 && my >= hit_y0 && my < hit_y1;
         if m.left.just_pressed() && is_in_btn {
-            client::commands::create_new_dungeon::exec(false);
+            client::commands::ascend_multiplayer_dungeon::exec(dungeon.crawl_id);
         }
     }
     // CTA: Find exit
@@ -1218,195 +1254,195 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         );
     }
 
-    // Achievements Modal
-    if let Some(mut modal) = state.achievements_modal.take() {
-        // current tick
-        let t = tick();
+    // // Achievements Modal
+    // if let Some(mut modal) = state.achievements_modal.take() {
+    //     // current tick
+    //     let t = tick();
 
-        // Background overlay
-        rect!(w = w, h = h, color = 0x000000fe, absolute = true);
+    //     // Background overlay
+    //     rect!(w = w, h = h, color = 0x000000fe, absolute = true);
 
-        // Draw confetti
-        for particle in &modal.confetti {
-            circ!(
-                x = particle.x,
-                y = particle.y,
-                d = particle.radius * 2.,
-                color = particle.color,
-                absolute = true,
-            );
-        }
-        // Update confetti positions
-        for particle in &mut modal.confetti {
-            particle.y += particle.vy;
+    //     // Draw confetti
+    //     for particle in &modal.confetti {
+    //         circ!(
+    //             x = particle.x,
+    //             y = particle.y,
+    //             d = particle.radius * 2.,
+    //             color = particle.color,
+    //             absolute = true,
+    //         );
+    //     }
+    //     // Update confetti positions
+    //     for particle in &mut modal.confetti {
+    //         particle.y += particle.vy;
 
-            // Reset position if it goes off the screen
-            if particle.y > (h as f32) + particle.radius {
-                particle.y = 0.0;
-                particle.x = (rand() % w) as f32;
-                particle.vy = (rand() % 2 + 1) as f32;
-            }
-        }
+    //         // Reset position if it goes off the screen
+    //         if particle.y > (h as f32) + particle.radius {
+    //             particle.y = 0.0;
+    //             particle.x = (rand() % w) as f32;
+    //             particle.vy = (rand() % 2 + 1) as f32;
+    //         }
+    //     }
 
-        rect!(w = w, h = 16, color = 0x411883ff, absolute = true);
-        let text = "NEW ACHIEVEMENT!";
-        let color: u32 = if t % 128 < 64 { 0xbd59deff } else { 0x7b34bdff };
-        let text_w = (text.len() * 8) as u32;
-        let text_x = (w / 2) - (text_w / 2);
-        text!(
-            text,
-            x = text_x,
-            y = 2,
-            color = color,
-            font = Font::L,
-            absolute = true
-        );
-        let percent = dungeon.all_unlocked.len() as f32 / AchievementKind::INFO.len() as f32;
-        let percent = percent * 100.;
-        let text = &format!("COMPLETION:{:.0}%", percent);
-        let text_w = (text.len() * 5) as u32;
-        let text_x = (w / 2) - (text_w / 2);
-        text!(
-            text,
-            x = text_x,
-            y = 10,
-            color = 0x7b34bdff,
-            font = Font::S,
-            absolute = true
-        );
+    //     rect!(w = w, h = 16, color = 0x411883ff, absolute = true);
+    //     let text = "NEW ACHIEVEMENT!";
+    //     let color: u32 = if t % 128 < 64 { 0xbd59deff } else { 0x7b34bdff };
+    //     let text_w = (text.len() * 8) as u32;
+    //     let text_x = (w / 2) - (text_w / 2);
+    //     text!(
+    //         text,
+    //         x = text_x,
+    //         y = 2,
+    //         color = color,
+    //         font = Font::L,
+    //         absolute = true
+    //     );
+    //     let percent = dungeon.all_unlocked.len() as f32 / AchievementKind::INFO.len() as f32;
+    //     let percent = percent * 100.;
+    //     let text = &format!("COMPLETION:{:.0}%", percent);
+    //     let text_w = (text.len() * 5) as u32;
+    //     let text_x = (w / 2) - (text_w / 2);
+    //     text!(
+    //         text,
+    //         x = text_x,
+    //         y = 10,
+    //         color = 0x7b34bdff,
+    //         font = Font::S,
+    //         absolute = true
+    //     );
 
-        // Render each achievement modal
-        let mut did_dismiss = false;
-        for (achivement_idx, achievement_kind) in modal.kinds.iter().enumerate() {
-            // Render the modal
-            let modal_w = w - 8;
-            let modal_h = 100; //h - 64;
-            let modal_x = ((w / 2) - (modal_w / 2)) as i32;
-            let modal_y = 56 - modal.y.get() + (h as i32 * achivement_idx as i32);
-            let modal_bg_color = 0x1a1932ff;
+    //     // Render each achievement modal
+    //     let mut did_dismiss = false;
+    //     for (achivement_idx, achievement_kind) in modal.kinds.iter().enumerate() {
+    //         // Render the modal
+    //         let modal_w = w - 8;
+    //         let modal_h = 100; //h - 64;
+    //         let modal_x = ((w / 2) - (modal_w / 2)) as i32;
+    //         let modal_y = 56 - modal.y.get() + (h as i32 * achivement_idx as i32);
+    //         let modal_bg_color = 0x1a1932ff;
 
-            // modal_y_offset = modal_y_offset.saturating_sub(8).max(0);
-            rect!(
-                w = modal_w,
-                h = modal_h,
-                x = modal_x,
-                y = modal_y,
-                color = modal_bg_color,
-                border_radius = 8,
-                absolute = true
-            );
+    //         // modal_y_offset = modal_y_offset.saturating_sub(8).max(0);
+    //         rect!(
+    //             w = modal_w,
+    //             h = modal_h,
+    //             x = modal_x,
+    //             y = modal_y,
+    //             color = modal_bg_color,
+    //             border_radius = 8,
+    //             absolute = true
+    //         );
 
-            // Render the badge sprite placeholder
-            ellipse!(
-                w = 64,
-                h = 64,
-                x = modal_x + ((modal_w / 2) - (64 / 2)) as i32,
-                y = modal_y + -32,
-                color = 0x2a2f4eff,
-                border_width = 4,
-                border_color = modal_bg_color,
-                absolute = true
-            );
-            sprite!(
-                "achievement_unlocked_icon",
-                x = modal_x + ((modal_w / 2) - (64 / 2)) as i32,
-                y = modal_y + -32,
-                absolute = true
-            );
+    //         // Render the badge sprite placeholder
+    //         ellipse!(
+    //             w = 64,
+    //             h = 64,
+    //             x = modal_x + ((modal_w / 2) - (64 / 2)) as i32,
+    //             y = modal_y + -32,
+    //             color = 0x2a2f4eff,
+    //             border_width = 4,
+    //             border_color = modal_bg_color,
+    //             absolute = true
+    //         );
+    //         sprite!(
+    //             "achievement_unlocked_icon",
+    //             x = modal_x + ((modal_w / 2) - (64 / 2)) as i32,
+    //             y = modal_y + -32,
+    //             absolute = true
+    //         );
 
-            // Find achievement info
-            let (name, description) = achievement_kind.info();
+    //         // Find achievement info
+    //         let (name, description) = achievement_kind.info();
 
-            // Render the achievement name
-            let mut text_y = modal_y + 40;
-            let pad = 8;
-            let font = Font::L;
-            for line in wrap_text(&name.to_ascii_uppercase(), modal_w - (pad * 2), font) {
-                let text_w = (line.len() * 8) as u32;
-                text!(
-                    &line,
-                    x = (modal_x as i32) + ((modal_w / 2) - (text_w / 2)) as i32,
-                    y = text_y,
-                    color = 0xffffffff,
-                    font = font,
-                    absolute = true
-                );
-                text_y += 10; // Adjust line spacing as needed
-            }
-            text_y += 8;
+    //         // Render the achievement name
+    //         let mut text_y = modal_y + 40;
+    //         let pad = 8;
+    //         let font = Font::L;
+    //         for line in wrap_text(&name.to_ascii_uppercase(), modal_w - (pad * 2), font) {
+    //             let text_w = (line.len() * 8) as u32;
+    //             text!(
+    //                 &line,
+    //                 x = (modal_x as i32) + ((modal_w / 2) - (text_w / 2)) as i32,
+    //                 y = text_y,
+    //                 color = 0xffffffff,
+    //                 font = font,
+    //                 absolute = true
+    //             );
+    //             text_y += 10; // Adjust line spacing as needed
+    //         }
+    //         text_y += 8;
 
-            // Render the achievement description
-            let font = Font::M;
-            for line in wrap_text(description, modal_w, font) {
-                let text_w = (line.len() * 5) as u32;
-                text!(
-                    &line,
-                    x = modal_x + ((modal_w / 2) - (text_w / 2)) as i32,
-                    y = text_y,
-                    color = 0xe1e5d8ff,
-                    font = font,
-                    absolute = true
-                );
-                text_y += 10; // Adjust line spacing as needed
-            }
+    //         // Render the achievement description
+    //         let font = Font::M;
+    //         for line in wrap_text(description, modal_w, font) {
+    //             let text_w = (line.len() * 5) as u32;
+    //             text!(
+    //                 &line,
+    //                 x = modal_x + ((modal_w / 2) - (text_w / 2)) as i32,
+    //                 y = text_y,
+    //                 color = 0xe1e5d8ff,
+    //                 font = font,
+    //                 absolute = true
+    //             );
+    //             text_y += 10; // Adjust line spacing as needed
+    //         }
 
-            let text = "OKAY";
-            let text_w = (text.len() * 8) as u32;
-            let text_x = (w / 2) - (text_w / 2);
-            let action_btn_x = text_x - 8;
-            let action_btn_y = modal_y + modal_h + 16 - 8;
-            let action_btn_w = text_w + 16;
-            let action_btn_h = 24;
-            rect!(
-                w = action_btn_w,
-                h = action_btn_h,
-                x = action_btn_x,
-                y = action_btn_y,
-                color = 0x411883ff,
-                border_radius = 4,
-                absolute = true
-            );
-            text!(
-                text,
-                x = text_x,
-                y = modal_y + modal_h + 16,
-                font = Font::L,
-                absolute = true
-            );
+    //         let text = "OKAY";
+    //         let text_w = (text.len() * 8) as u32;
+    //         let text_x = (w / 2) - (text_w / 2);
+    //         let action_btn_x = text_x - 8;
+    //         let action_btn_y = modal_y + modal_h + 16 - 8;
+    //         let action_btn_w = text_w + 16;
+    //         let action_btn_h = 24;
+    //         rect!(
+    //             w = action_btn_w,
+    //             h = action_btn_h,
+    //             x = action_btn_x,
+    //             y = action_btn_y,
+    //             color = 0x411883ff,
+    //             border_radius = 4,
+    //             absolute = true
+    //         );
+    //         text!(
+    //             text,
+    //             x = text_x,
+    //             y = modal_y + modal_h + 16,
+    //             font = Font::L,
+    //             absolute = true
+    //         );
 
-            // Handle OKAY click / tap
-            if achivement_idx == modal.current {
-                let m = mouse(0);
-                let [mx, my] = m.position;
-                let mx = (mx - (cam!().0)) + (w / 2) as i32;
-                let my = (my - (cam!().1)) + (h / 2) as i32;
-                let hit_x0 = action_btn_x as i32;
-                let hit_x1 = (action_btn_x + action_btn_w) as i32;
-                let hit_y0 = action_btn_y as i32;
-                let hit_y1 = (action_btn_y + action_btn_h) as i32;
-                let is_in_btn = mx >= hit_x0 && mx < hit_x1 && my >= hit_y0 && my < hit_y1;
-                let did_click_btn = m.left.just_pressed() && is_in_btn;
-                if (did_click_btn || gamepad(0).start.just_pressed()) && modal.y.done() {
-                    did_dismiss = true;
-                }
-            }
-        }
+    //         // Handle OKAY click / tap
+    //         if achivement_idx == modal.current {
+    //             let m = mouse(0);
+    //             let [mx, my] = m.position;
+    //             let mx = (mx - (cam!().0)) + (w / 2) as i32;
+    //             let my = (my - (cam!().1)) + (h / 2) as i32;
+    //             let hit_x0 = action_btn_x as i32;
+    //             let hit_x1 = (action_btn_x + action_btn_w) as i32;
+    //             let hit_y0 = action_btn_y as i32;
+    //             let hit_y1 = (action_btn_y + action_btn_h) as i32;
+    //             let is_in_btn = mx >= hit_x0 && mx < hit_x1 && my >= hit_y0 && my < hit_y1;
+    //             let did_click_btn = m.left.just_pressed() && is_in_btn;
+    //             if (did_click_btn || gamepad(0).start.just_pressed()) && modal.y.done() {
+    //                 did_dismiss = true;
+    //             }
+    //         }
+    //     }
 
-        // Handle modal dismiss
-        if did_dismiss {
-            if modal.current < modal.kinds.len() {
-                modal.current += 1;
-            }
-        }
+    //     // Handle modal dismiss
+    //     if did_dismiss {
+    //         if modal.current < modal.kinds.len() {
+    //             modal.current += 1;
+    //         }
+    //     }
 
-        // Update modal transition tween
-        modal.y.set(modal.current as i32 * (h as i32));
+    //     // Update modal transition tween
+    //     modal.y.set(modal.current as i32 * (h as i32));
 
-        // Put the modal back if modal player hasn't seen all achievements
-        if modal.current < modal.kinds.len() || !modal.y.done() {
-            state.achievements_modal = Some(modal);
-        }
-    }
+    //     // Put the modal back if modal player hasn't seen all achievements
+    //     if modal.current < modal.kinds.len() || !modal.y.done() {
+    //         state.achievements_modal = Some(modal);
+    //     }
+    // }
 
     // Pause button
     let gp = gamepad(0);
@@ -1451,7 +1487,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         }
         if let Ok(stats) = client::queries::player_dungeon_stats::fetch(&user_id) {
             let x = 9;
-            let mut y = modal_y + 4;
+            let mut y = modal_y + 6;
 
             #[rustfmt::skip]
             text!("DUNGEON RECORD", absolute = true, font = Font::L, x = x, y = y);
@@ -1502,14 +1538,14 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         }
         y += 16;
 
-        // End crawl button
-        if negative_button("END CRAWL", modal_x, y, w - 8) {
-            client::commands::delete_dungeon::exec();
+        // Leave party button
+        if negative_button("LEAVE PARTY", modal_x, y, w - 8) {
+            client::commands::delete_multiplayer_dungeon::exec(dungeon.crawl_id);
             state.screen = Screen::SelectMode;
         }
         y += 14;
         text!(
-            "(PROGRESS WILL BE LOST!)",
+            "(YOU CANNOT RE-JOIN!)",
             absolute = true,
             x = modal_x + 3,
             y = y,
@@ -1526,8 +1562,11 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         rect!(absolute = true, x = -xo, w = w, h = h, color = 0x000000ff);
     }
 
-    // Alerts
-    if let Some(event) = os::client::watch_events(server::PROGRAM_ID, Some("alert")).data {
+    // Party notifications
+    let multiplayer_event_type = format!("multiplayer_dungeon_{}", dungeon.crawl_id);
+    if let Some(event) =
+        os::client::watch_events(server::PROGRAM_ID, Some(&multiplayer_event_type)).data
+    {
         // Display an alert banner for notifications that are < 10s old
         let duration = 10_000;
         let millis_since_event = time::now() as u32 - event.created_at * 1000;
@@ -1535,8 +1574,8 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
             if let Ok(msg) = std::str::from_utf8(&event.data) {
                 let line_height = 6;
                 let mut y = 0;
-                let bg_color: u32 = 0x33984bff;
-                let alert_kind = "DUNGEON ALERT:";
+                let bg_color: u32 = 0x81090aff;
+                let alert_kind = "PARTY ALERT:";
                 #[rustfmt::skip]
                 rect!(w = w, h = line_height, y = y, color = bg_color, absolute = true);
                 #[rustfmt::skip]
@@ -1551,19 +1590,11 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
                 }
                 #[rustfmt::skip]
                 rect!(w = w, h = 1, y = y, color = bg_color, absolute = true);
-                // If the player has no current party, allow them to view the parties list by clicking the alert banner
-                if client::queries::current_multiplayer_dungeon_crawl_id::fetch(&user_id).is_err() {
-                    if clickable(0, 0, w, y) {
-                        state.screen =
-                            Screen::MultiplayerDungeonLobbies(MultiplayerDungeonLobbiesContext {
-                                cursor: 0,
-                                selected: false,
-                            })
-                    }
-                }
             }
         }
-    } // text!("{:#?}", dungeon.try_to_vec().unwrap().len(); absolute = true, x = 0, y = 0, font = Font::L, color = 0xffffffaa);
+    }
+    // text!("{:#?}", dungeon.try_to_vec().unwrap().len(); absolute = true, x = 0, y = 0, font = Font::L, color = 0xffffffaa);
+    // text!("round {}", dungeon.round; absolute = true);
 }
 
 // Function to wrap text into lines that fit within max_width

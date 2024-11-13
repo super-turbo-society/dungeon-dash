@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct PlayerAchievements {
     completed: BTreeSet<u32>, // stores index of completed achievements
 }

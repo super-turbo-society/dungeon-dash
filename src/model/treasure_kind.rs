@@ -1,6 +1,7 @@
 use super::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum TreasureKind {
     Gold,
     Heal,

@@ -1,33 +1,38 @@
 use super::*;
 
-pub const COMMAND: &'static str = "move_player";
+pub const COMMAND: &'static str = "move_monsters";
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
-pub struct MovePlayerCommand {
-    pub direction: Direction,
+pub struct Command {
+    crawl_id: u32,
+}
+impl Command {
+    pub fn for_crawl_id(crawl_id: u32) -> Self {
+        Self { crawl_id }
+    }
 }
 
-pub fn new(direction: Direction) -> MovePlayerCommand {
-    MovePlayerCommand { direction }
-}
-
-#[export_name = "turbo/move_player"]
+#[export_name = "turbo/move_monsters"]
 unsafe extern "C" fn exec() -> usize {
     // Get player id
     let user_id = os::server::get_user_id();
 
     // Get command data
-    let cmd = os::server::command!(MovePlayerCommand);
+    let cmd = os::server::command!(Command);
 
     // Load player dungeon
     os::server::log!("Loading the dungeon for player {}...", user_id);
     let dungeon_filepath = paths::player_dungeon(&user_id);
-    let mut dungeon = os::server::read_else!(Dungeon, &dungeon_filepath, {
-        // Reset dungeon file
-        os::server::write_file(&dungeon_filepath, &[]).expect("Could not save dungeon file.");
-        return os::server::COMMIT;
-    });
+    let mut dungeon = os::server::read!(Dungeon, &dungeon_filepath);
 
+    os::server::log!(
+        "cmd.crawl_id = {} / dungeon.crawl_id = {}",
+        cmd.crawl_id,
+        dungeon.crawl_id
+    );
+    if cmd.crawl_id != dungeon.crawl_id {
+        return os::server::CANCEL;
+    }
     // Cancel command if player has already won or lost
     os::server::log!("Checking game over conditions...");
     if dungeon.player.health == 0 {
@@ -35,19 +40,9 @@ unsafe extern "C" fn exec() -> usize {
         return os::server::CANCEL;
     }
 
-    // Move player
-    os::server::log!("Moving player...");
-    if !dungeon.move_player(cmd.direction, os::server::log) {
-        return os::server::CANCEL;
-    }
-
-    // Move monsters if player has not reached the exit
-    if !dungeon.is_exit(dungeon.player.x, dungeon.player.y) {
-        os::server::log!("Moving monsters...");
-        dungeon.move_monsters(os::server::log);
-    } else {
-        os::server::log!("P1 reached exit.");
-    }
+    // Move monsters
+    os::server::log!("Moving monsters...");
+    dungeon.move_monsters(os::server::log);
 
     // Increment turn
     os::server::log!("Incrementing turn number...");
@@ -129,6 +124,21 @@ unsafe extern "C" fn exec() -> usize {
         let player_achievements_filepath = paths::player_achievements(&user_id);
         os::server::write!(&player_achievements_filepath, &dungeon.all_unlocked)
             .expect("Could not write player achievements");
+
+        // // Enqueue move monster command
+        // if dungeon.turn == 0 {
+        //     let res = os::server::enequeue_command(
+        //         &PROGRAM_ID,
+        //         COMMAND,
+        //         &Command::for_turn(dungeon.turn).try_to_vec().unwrap(),
+        //         os::server::random_number(),
+        //         Some(500), // 5 sec
+        //     );
+        //     match res {
+        //         Ok(hash) => os::server::log!("Enqueued transaction with hash {hash}"),
+        //         Err(_err) => os::server::log!("Failed to enqueue transaction"),
+        //     }
+        // }
     }
 
     // Save the dungeon

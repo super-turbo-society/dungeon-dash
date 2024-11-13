@@ -27,9 +27,9 @@ unsafe extern "C" fn exec() -> usize {
         // Trigger an alert for new players!
         let total_stats =
             os::server::read_or!(DungeonStats, &player_stats_filepath, DungeonStats::new());
-        if total_stats.get(DungeonStatKind::CrawlsCompleted) == 0 {
-            os::server::alert!("Player {:.8} has entered the dungeon!", user_id);
-        }
+        // if total_stats.get(DungeonStatKind::CrawlsCompleted) == 0 {
+        //     os::server::alert!("Player {:.8} has entered the dungeon!", user_id);
+        // }
 
         let w = 5;
         let h = 5;
@@ -133,7 +133,7 @@ unsafe extern "C" fn exec() -> usize {
     if dungeon.floor > 0 {
         // Randomize treasures
         os::server::log!("Randomizing monsters...");
-        let num_monsters = 2 + (magic_ratio / 2);
+        let num_monsters = 2 + (magic_ratio / 1);
         // Define monsters and their weights
         let monster_weights: &[(u32, MonsterKind)] = match dungeon.theme {
             DungeonThemeKind::Castle => &[

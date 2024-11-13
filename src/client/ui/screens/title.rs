@@ -1,14 +1,8 @@
 use super::*;
 
-pub fn render(_state: &mut LocalState, is_logged_in: bool) {
+pub fn render(state: &mut LocalState, is_logged_in: bool) {
     // Get canvas width and height
     let [w, h] = canvas_size!();
-
-    // Handle user input
-    let gp = gamepad(0);
-    if gp.start.just_pressed() {
-        client::commands::create_new_dungeon::exec(true);
-    }
 
     // Reset camera position
     reset_cam!();
@@ -90,8 +84,13 @@ pub fn render(_state: &mut LocalState, is_logged_in: bool) {
     sprite!("title_text", scale = title_scale, y = title_y, x = title_x,);
 
     if is_logged_in {
-        if mouse(0).left.just_pressed() {
-            client::commands::create_new_dungeon::exec(true);
+        // Handle user input
+        if gamepad(0).start.just_pressed() || mouse(0).left.just_pressed() {
+            state.screen = Screen::SelectMode;
+            // state.screen = Screen::MultiplayerDungeonLobbies(MultiplayerDungeonLobbiesContext {
+            //     cursor: 0,
+            //     selected: false,
+            // });
         }
         rect!(
             absolute = true,
