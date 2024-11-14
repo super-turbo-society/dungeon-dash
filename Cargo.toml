@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-turbo = { version = "1.6.0-alpha.14", package = "turbo-genesis-sdk" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+turbo = { version = "1.6.0-alpha.15", package = "turbo-genesis-sdk", path = "/Users/jozanza/github/turbo-genesis-sdk" }
 
 [lib]
 crate-type = ["cdylib"]

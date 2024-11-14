@@ -44,9 +44,9 @@ unsafe extern "C" fn exec() -> usize {
     os::server::log!("Moving monsters...");
     dungeon.move_monsters(os::server::log);
 
-    // Increment turn
-    os::server::log!("Incrementing turn number...");
-    dungeon.turn += 1;
+    // // Increment turn
+    // os::server::log!("Incrementing turn number...");
+    // dungeon.turn += 1;
 
     // If player died...
     if dungeon.player.health == 0 {

@@ -46,5 +46,23 @@ unsafe extern "C" fn exec() -> usize {
         return os::server::CANCEL;
     };
 
+    // Attempt to delete your party lobby if it still exists after some duration
+    let res = os::server::enqueue_command(
+        &PROGRAM_ID,
+        delete_multiplayer_dungeon_lobby::Command::NAME,
+        &delete_multiplayer_dungeon_lobby::Command::created_no_later_than(now)
+            .try_to_vec()
+            .unwrap(),
+        os::server::random_number(),
+        Some(60_000 * 10), // 10 min
+    );
+    match res {
+        Ok(hash) => os::server::log!(
+            "Enqueued transaction: {}",
+            os::encoding::encode_base64(&hash)
+        ),
+        Err(err) => os::server::log!("Failed to enqueue transaction: {err:?}"),
+    }
+
     os::server::COMMIT
 }

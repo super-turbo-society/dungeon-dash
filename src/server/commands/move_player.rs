@@ -45,6 +45,22 @@ unsafe extern "C" fn exec() -> usize {
     if !dungeon.is_exit(dungeon.player.x, dungeon.player.y) {
         os::server::log!("Moving monsters...");
         dungeon.move_monsters(os::server::log);
+
+        // Alternatively, you could invoke an external command to perform actions
+        // The flow to invoke the move_monsters command from within the move_players command:
+        // 1. Write our dungeon updates to the player's dungeon file
+        // 2. Execute move_monsters via invoke_command. This will update the dungeon file.
+        // 3. Read the dungeon file and update our dungeon var
+        // os::server::write!(&dungeon_filepath, &dungeon).expect("Could not write player dungeon");
+        // let res = os::server::invoke_command(
+        //     &PROGRAM_ID,
+        //     &move_monsters::COMMAND,
+        //     &move_monsters::Command::for_crawl_id(dungeon.crawl_id)
+        //         .try_to_vec()
+        //         .unwrap(),
+        // )
+        // .expect("Could not invoke move_monsters command");
+        // dungeon = os::server::read!(Dungeon, &dungeon_filepath);
     } else {
         os::server::log!("P1 reached exit.");
     }
