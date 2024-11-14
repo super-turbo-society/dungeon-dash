@@ -124,21 +124,6 @@ unsafe extern "C" fn exec() -> usize {
         let player_achievements_filepath = paths::player_achievements(&user_id);
         os::server::write!(&player_achievements_filepath, &dungeon.all_unlocked)
             .expect("Could not write player achievements");
-
-        // // Enqueue move monster command
-        // if dungeon.turn == 0 {
-        //     let res = os::server::enequeue_command(
-        //         &PROGRAM_ID,
-        //         COMMAND,
-        //         &Command::for_turn(dungeon.turn).try_to_vec().unwrap(),
-        //         os::server::random_number(),
-        //         Some(500), // 5 sec
-        //     );
-        //     match res {
-        //         Ok(hash) => os::server::log!("Enqueued transaction with hash {hash}"),
-        //         Err(_err) => os::server::log!("Failed to enqueue transaction"),
-        //     }
-        // }
     }
 
     // Save the dungeon
