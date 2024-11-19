@@ -34,7 +34,7 @@ unsafe extern "C" fn exec() -> usize {
     );
 
     // Remove old lobbies
-    let ttl = 60 * 10; // 10 mins
+    let ttl = 60 * 10; // 10 min
     lobby_list.retain(|_owner, lobby| {
         os::server::log!("Comparing... {now} - {}", lobby.created_at);
         now - lobby.created_at < ttl
@@ -47,7 +47,7 @@ unsafe extern "C" fn exec() -> usize {
     };
 
     // Attempt to delete your party lobby if it still exists after some duration
-    let res = os::server::enqueue_command(
+    os::server::enqueue_command(
         &PROGRAM_ID,
         delete_multiplayer_dungeon_lobby::Command::NAME,
         &delete_multiplayer_dungeon_lobby::Command::created_no_later_than(now)
@@ -55,14 +55,8 @@ unsafe extern "C" fn exec() -> usize {
             .unwrap(),
         os::server::random_number(),
         Some(60_000 * 10), // 10 min
-    );
-    match res {
-        Ok(hash) => os::server::log!(
-            "Enqueued transaction: {}",
-            os::encoding::encode_base64(&hash)
-        ),
-        Err(err) => os::server::log!("Failed to enqueue transaction: {err:?}"),
-    }
+    )
+    .unwrap();
 
     os::server::COMMIT
 }

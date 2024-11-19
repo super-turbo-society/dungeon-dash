@@ -43,6 +43,7 @@ turbo::init! {
         achievements_modal: Option<AchievementsModal>,
         last_crawl_achievements_modal: u32,
         show_stats_modal: bool,
+        last_channel_message: String,
     } = {
         client::ui::initialize()
     }

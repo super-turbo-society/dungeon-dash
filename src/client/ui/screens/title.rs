@@ -1,3 +1,5 @@
+use server::PROGRAM_ID;
+
 use super::*;
 
 pub fn render(state: &mut LocalState, is_logged_in: bool) {
@@ -83,35 +85,72 @@ pub fn render(state: &mut LocalState, is_logged_in: bool) {
     );
     sprite!("title_text", scale = title_scale, y = title_y, x = title_x,);
 
-    if is_logged_in {
-        // Handle user input
-        if gamepad(0).start.just_pressed() || mouse(0).left.just_pressed() {
-            state.screen = Screen::SelectMode;
-            // state.screen = Screen::MultiplayerDungeonLobbies(MultiplayerDungeonLobbiesContext {
-            //     cursor: 0,
-            //     selected: false,
-            // });
-        }
-        rect!(
-            absolute = true,
-            y = h - 32,
-            w = w,
-            h = 32,
-            color = 0x222034ff
-        );
-        if t / 2. % 32. < 16. {
-            let text = "TAP TO START";
-            let text_len = text.len() as u32;
-            let text_w = text_len * 8;
-            text!(
-                text,
-                x = (w / 2) - (text_w / 2),
-                y = h - 20,
-                color = 0xffffffff,
-                font = Font::L
-            );
-        }
+    // Skip the rest of this function if user is not authenticated
+    if !is_logged_in {
+        return;
     }
+
+    // Handle user input
+    if gamepad(0).start.just_pressed() || mouse(0).left.just_pressed() {
+        state.screen = Screen::SelectMode;
+        // state.screen = Screen::MultiplayerDungeonLobbies(MultiplayerDungeonLobbiesContext {
+        //     cursor: 0,
+        //     selected: false,
+        // });
+    }
+    rect!(
+        absolute = true,
+        y = h - 32,
+        w = w,
+        h = 32,
+        color = 0x222034ff
+    );
+    if t / 2. % 32. < 16. {
+        let text = "TAP TO START";
+        let text_len = text.len() as u32;
+        let text_w = text_len * 8;
+        text!(
+            text,
+            x = (w / 2) - (text_w / 2),
+            y = h - 20,
+            color = 0xffffffff,
+            font = Font::L
+        );
+    }
+
+    // use os::client::channel::*;
+    // match subscribe(&PROGRAM_ID, "online_now", "all") {
+    //     Channel::Connected(conn) => {
+    //         if gamepad(0).up.pressed() {
+    //             if let Err(err) = conn.send(b"hi!") {
+    //                 log!("{err:?}");
+    //             }
+    //         }
+    //         // Pull all messages
+    //         let mut i = 0;
+    //         loop {
+    //             match conn.recv() {
+    //                 Ok(None) => break,
+    //                 Ok(Some(data)) => {
+    //                     let msg = String::from_utf8(data).unwrap();
+    //                     state.last_channel_message = msg;
+    //                     log!("✅ CHANNEL MESSAGE {i}:\n{}", &state.last_channel_message);
+    //                     i += 1;
+    //                 }
+    //                 Err(err) => {
+    //                     log!("❌ CHANNEL ERROR:\n{:?}", err);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     Channel::Disconnected(conn) => {
+    //         text!("CHANNEL NOT CONNECTED", absolute = true, font = Font::S);
+    //         conn.connect()
+    //     }
+    // }
+
+    // text!("CHANNEL MESSAGE:\n{}", state.last_channel_message; absolute = true, font = Font::S);
 
     // text!("PRESS START {:?}", os::client::user_id(););
     // text!("PRESS START");

@@ -119,6 +119,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
                 offset_y: Tween::new(0)
                     .duration(MOVE_DUR / 2)
                     .ease(Easing::EaseInOutQuad),
+                emote: None,
             })
         }
     }

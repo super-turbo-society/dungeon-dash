@@ -33,6 +33,9 @@ pub use dungeon_theme::*;
 mod dungeon_theme_kind;
 pub use dungeon_theme_kind::*;
 
+mod emote;
+pub use emote::*;
+
 mod entity;
 pub use entity::*;
 

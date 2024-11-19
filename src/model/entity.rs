@@ -6,6 +6,7 @@ pub struct Entity {
     pub y: Tween<i32>,
     pub offset_x: Tween<i32>,
     pub offset_y: Tween<i32>,
+    pub emote: Option<(Emote, usize)>,
 }
 impl Entity {
     pub fn is_idle(&mut self) -> bool {

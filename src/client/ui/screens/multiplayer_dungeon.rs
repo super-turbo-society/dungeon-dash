@@ -1,7 +1,36 @@
 use super::*;
+use os::client::channel::*;
 use std::f32::consts::PI;
 
 pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeon) {
+    // Subscribe to channel
+    let multiplayer_dungeon_channel = Channel::subscribe(
+        server::PROGRAM_ID,
+        "multiplayer_dungeon",
+        &format!("{}", dungeon.crawl_id),
+    );
+
+    // Connect to channel
+    if let Channel::Disconnected(ref conn) = multiplayer_dungeon_channel {
+        conn.connect();
+    };
+
+    // Receive messages from the channel
+    if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+        let t = tick();
+        while let Ok(Some(data)) = conn.recv() {
+            // Parse message
+            type Message = (String, Emote);
+            if let Ok((player_id, emote)) = Message::try_from_slice(&data) {
+                // Update player emote
+                let mut players_iter = dungeon.player.players.iter();
+                if let Some(i) = players_iter.position(|(id, _)| *id == player_id) {
+                    state.players[i].emote = Some((emote, t));
+                }
+            }
+        }
+    }
+
     // Size constants
     let [w, h] = canvas_size!();
     let menubar_h = 40;
@@ -121,6 +150,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
                 offset_y: Tween::new(0)
                     .duration(MOVE_DUR / 2)
                     .ease(Easing::EaseInOutQuad),
+                emote: None,
             })
         }
     }
@@ -339,10 +369,45 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
             if ctx.next_round > dungeon.round {
                 sprite!("hero", x = x, y = y, fps = fps::FAST, color = 0x000000cc);
             }
+            let t = tick() / 6 % 8;
+            #[rustfmt::skip]
+            let yo = if t == 1 || t == 3 { 1 } else if t == 2 { 2 } else { 0 };
             // if user_id == "00000000-0000-0000-0000-000000000000" {
             if user_id == "79d09d42-6f28-4a3c-a99d-1a8544da9572" {
-                sprite!("crown", x = x, y = y, fps = fps::FAST);
+                sprite!("crown", x = x, y = y + yo, fps = fps::FAST);
             }
+            let emote_timeout = 60 * 3;
+            match state.players[i].emote {
+                Some((Emote::Love, t)) => {
+                    if tick() - t < emote_timeout {
+                        sprite!("emoji_love", x = x + 4, y = y + yo + 1 - 10);
+                    } else {
+                        state.players[i].emote = None;
+                    }
+                }
+                Some((Emote::Anger, t)) => {
+                    if tick() - t < emote_timeout {
+                        sprite!("emoji_angry", x = x + 4, y = y + yo + 1 - 10);
+                    } else {
+                        state.players[i].emote = None;
+                    }
+                }
+                Some((Emote::Sob, t)) => {
+                    if tick() - t < emote_timeout {
+                        sprite!("emoji_cry", x = x + 4, y = y + yo + 1 - 10);
+                    } else {
+                        state.players[i].emote = None;
+                    }
+                }
+                Some((Emote::Thinking, t)) => {
+                    if tick() - t < emote_timeout {
+                        sprite!("emoji_thinking", x = x + 4, y = y + yo + 1 - 10);
+                    } else {
+                        state.players[i].emote = None;
+                    }
+                }
+                None => {}
+            };
         } else {
             sprite!(
                 "tombstone",
@@ -755,6 +820,49 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
         }
     }
 
+    // Draw player emotes
+    for player in &mut state.players {
+        let x = player.x.get();
+        let y = player.y.get();
+        let x = x + player.offset_x.get() + 4;
+        let y = y + player.offset_y.get() - 13;
+        let t = tick() / 6 % 8;
+        #[rustfmt::skip]
+        let y = y + if t == 1 || t == 3 { 1 } else if t == 2 { 2 } else { 0 };
+        let emote_timeout = 60 * 3;
+        match player.emote {
+            Some((Emote::Love, t)) => {
+                if tick() - t < emote_timeout {
+                    sprite!("emoji_love", x = x, y = y);
+                } else {
+                    player.emote = None;
+                }
+            }
+            Some((Emote::Anger, t)) => {
+                if tick() - t < emote_timeout {
+                    sprite!("emoji_angry", x = x, y = y);
+                } else {
+                    player.emote = None;
+                }
+            }
+            Some((Emote::Sob, t)) => {
+                if tick() - t < emote_timeout {
+                    sprite!("emoji_cry", x = x, y = y);
+                } else {
+                    player.emote = None;
+                }
+            }
+            Some((Emote::Thinking, t)) => {
+                if tick() - t < emote_timeout {
+                    sprite!("emoji_thinking", x = x, y = y);
+                } else {
+                    player.emote = None;
+                }
+            }
+            None => {}
+        };
+    }
+
     // Rain weather effect
     if dungeon.theme == DungeonThemeKind::Pirate {
         let t = tick();
@@ -1152,9 +1260,48 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     }
     // CTA: Find exit
     else if dungeon.exit.is_some() {
+        // Emotes
+        let mut emoji_x = (w as i32 / 2) + 8;
+        let emoji_y = y + 8;
+        sprite!("emoji_love", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Love;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_cry", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Sob;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_angry", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Anger;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_thinking", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Thinking;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+
         let cta_x = w / 2;
-        let cta_y = menubar_y + 4;
-        let cta_w = (w / 2) - 4;
+        let cta_y = menubar_y;
+        let cta_w = w / 2;
         let cta_text = "~TASK~";
         let cta_text_len = cta_text.len() as u32;
         let cta_text_w = cta_text_len * 8;
@@ -1184,9 +1331,47 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     }
     // CTA: Get the key
     else {
+        let mut emoji_x = (w as i32 / 2) + 8;
+        let emoji_y = y + 8;
+        sprite!("emoji_love", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Love;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_cry", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Sob;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_angry", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Anger;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+        emoji_x += 14;
+        sprite!("emoji_thinking", absolute = true, x = emoji_x, y = emoji_y);
+        if clickable(emoji_x, emoji_y, 8, 8) {
+            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
+                let emote = Emote::Thinking;
+                let msg = emote.try_to_vec().unwrap();
+                let _ = conn.send(&msg);
+            }
+        }
+
         let cta_x = w / 2;
-        let cta_y = menubar_y + 4;
-        let cta_w = (w / 2) - 4;
+        let cta_y = menubar_y;
+        let cta_w = w / 2;
         let cta_text = "~TASK~";
         let cta_text_len = cta_text.len() as u32;
         let cta_text_w = cta_text_len * 8;
@@ -1539,15 +1724,15 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
         y += 16;
 
         // Leave party button
-        if negative_button("LEAVE PARTY", modal_x, y, w - 8) {
+        if negative_button("LEAVE PARTY FOREVER*", modal_x, y, w - 8) {
             client::commands::delete_multiplayer_dungeon::exec(dungeon.crawl_id);
             state.screen = Screen::SelectMode;
         }
         y += 14;
         text!(
-            "(YOU CANNOT RE-JOIN!)",
+            "*YOU CANNOT RE-JOIN!",
             absolute = true,
-            x = modal_x + 3,
+            x = modal_x,
             y = y,
             font = Font::S,
             color = 0xffffffaa

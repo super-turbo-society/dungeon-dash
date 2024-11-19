@@ -52,7 +52,6 @@ pub mod commands {
 pub mod deserializers {
     use super::*;
     use serde_json::json;
-    use turbo::os;
 
     #[export_name = "deserializers/dungeon"]
     unsafe extern "C" fn deserialize_dungeon() {
@@ -78,5 +77,90 @@ pub mod deserializers {
         };
         let json = json!(dungeon);
         os::server::log!("{}", json)
+    }
+}
+
+pub mod channels {
+    use super::*;
+    use os::server::{ChannelError, ChannelMessage};
+
+    #[export_name = "channel/multiplayer_dungeon"]
+    unsafe extern "C" fn multiplayer_dungeon_channel() {
+        loop {
+            match os::server::channel_recv() {
+                Ok(ChannelMessage::Data(user_id, data)) => {
+                    let emote = Emote::try_from_slice(&data).unwrap();
+                    let payload = (user_id, emote);
+                    os::server::channel_broadcast(&payload.try_to_vec().unwrap());
+                }
+                Err(_err) => return,
+                _ => {}
+            }
+        }
+    }
+
+    #[export_name = "channel/online_now"]
+    unsafe extern "C" fn online_now_channel() {
+        os::server::log!("CHANNEL OPENED");
+        // 1. Handle channel creation parameters
+        // let cmd = os::server::command!(...);
+
+        // Process messages
+        // 1. Process incoming subscriber messages
+        // 2. Send outgoing subscriber messages
+        // 3. Interact with files as-needed
+        let mut connected = BTreeSet::new();
+        let mut num_messages = 0;
+        loop {
+            match os::server::channel_recv() {
+                // Handle a channel connection
+                Ok(ChannelMessage::Connect(user_id, _data)) => {
+                    connected.insert(user_id.clone());
+                    os::server::log!("{user_id} CONNECTED");
+                    let n = connected.len();
+                    os::server::channel_broadcast(
+                        format!("{user_id:.8} joined!\n{n} connected\n{num_messages} messages")
+                            .as_bytes(),
+                    );
+                }
+                // Handle a channel disconnection
+                Ok(ChannelMessage::Disconnect(user_id, _data)) => {
+                    connected.remove(&user_id);
+                    os::server::log!("{user_id} DISCONNECTED");
+                    let n = connected.len();
+                    os::server::channel_broadcast(
+                        format!(
+                            "{user_id:.8} disconnected\n{n} connected\n{num_messages} messages"
+                        )
+                        .as_bytes(),
+                    );
+                }
+                // Handle custom message data sent to
+                Ok(ChannelMessage::Data(user_id, data)) => {
+                    num_messages += 1;
+                    os::server::log!("Got message: {user_id}");
+                    if let Ok(data) = String::from_utf8(data) {
+                        os::server::log!("Got message from {user_id}: {data}");
+                        let n = connected.len();
+                        os::server::channel_broadcast(
+                            format!("{user_id:.8} says:\n'{data}'\n{n} connected\n{num_messages} messages").as_bytes(),
+                        );
+                    } else {
+                        os::server::log!("Got message from {user_id}");
+                        os::server::channel_send(&user_id, b"Got non-utf8 message");
+                    }
+                    // handle game-specific channel messages
+                }
+                // Handle a timeout error
+                Err(ChannelError::Timeout) => {
+                    continue;
+                }
+                // Handle a channel closure
+                Err(err) => {
+                    os::server::log!("ERROR: {err:?}");
+                    return;
+                }
+            }
+        }
     }
 }

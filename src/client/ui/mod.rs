@@ -23,6 +23,7 @@ fn new_player_entity() -> Entity {
         offset_y: Tween::new(0)
             .duration(MOVE_DUR / 2)
             .ease(Easing::EaseInOutQuad),
+        emote: None,
     }
 }
 
@@ -42,6 +43,7 @@ pub fn initialize() -> LocalState {
         achievements_modal: None,
         last_crawl_achievements_modal: 0,
         show_stats_modal: false,
+        last_channel_message: "".to_string(),
     }
 }
 

@@ -24,15 +24,10 @@ unsafe extern "C" fn exec() -> usize {
     os::server::log!("Loading the dungeon for player {}...", user_id);
     let dungeon_filepath = paths::player_dungeon(&user_id);
     let mut dungeon = os::server::read!(Dungeon, &dungeon_filepath);
-
-    os::server::log!(
-        "cmd.crawl_id = {} / dungeon.crawl_id = {}",
-        cmd.crawl_id,
-        dungeon.crawl_id
-    );
     if cmd.crawl_id != dungeon.crawl_id {
         return os::server::CANCEL;
     }
+
     // Cancel command if player has already won or lost
     os::server::log!("Checking game over conditions...");
     if dungeon.player.health == 0 {
@@ -43,10 +38,6 @@ unsafe extern "C" fn exec() -> usize {
     // Move monsters
     os::server::log!("Moving monsters...");
     dungeon.move_monsters(os::server::log);
-
-    // // Increment turn
-    // os::server::log!("Incrementing turn number...");
-    // dungeon.turn += 1;
 
     // If player died...
     if dungeon.player.health == 0 {
