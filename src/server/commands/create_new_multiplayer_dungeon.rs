@@ -137,13 +137,14 @@ unsafe extern "C" fn exec() -> usize {
             let dungeon_filepath = paths::multiplayer_dungeon(crawl_id);
             let mut dungeon = os::server::read!(MultiplayerDungeon, &dungeon_filepath);
 
-            // Get the player context
-            if dungeon.owner != user_id {
+            // Gather dungeon user IDs
+            let user_ids: Vec<_> = dungeon.player.players.keys().cloned().collect();
+
+            // Only dungeon members may reset the dungeon
+            if !user_ids.iter().any(|id| *id == user_id) {
                 os::server::log!("Only the dungeon owner can reset the dungeon.");
                 return os::server::CANCEL;
-            };
-
-            let user_ids: Vec<_> = dungeon.player.players.keys().cloned().collect();
+            }
 
             // Create the dungeon
             let w = 5;

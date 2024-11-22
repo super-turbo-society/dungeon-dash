@@ -14,8 +14,8 @@ turbo::cfg! {r#"
     resolution = [132, 224]
     # resolution = [144, 256]
     [turbo-os]
-    # api-url = "https://os.turbo.computer"
-    api-url = "http://localhost:8000"
+    api-url = "https://os.turbo.computer"
+    # api-url = "http://localhost:8000"
 "#}
 
 turbo::init! {

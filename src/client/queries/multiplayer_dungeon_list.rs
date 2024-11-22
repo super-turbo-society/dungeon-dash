@@ -2,7 +2,7 @@ use super::*;
 
 pub fn fetch() -> Result<BTreeMap<String, MultiplayerDungeonLobby>, std::io::Error> {
     let filepath = server::paths::multiplayer_dungeon_list();
-    let res = os::client::watch_file(server::PROGRAM_ID, &filepath, &[("stream", "true")]);
+    let res = os::client::watch_file(server::PROGRAM_ID, &filepath);
     // Default empty list if the file does not yet exist
     if !res.loading && res.error.is_none() && res.data.is_none() {
         return Ok(BTreeMap::new());

@@ -12,25 +12,25 @@ pub mod paths {
         "multiplayer_dungeon_list".to_string()
     }
     pub fn multiplayer_dungeon(crawl_id: u32) -> String {
-        format!("/multiplayer_dungeons/v{}/{}", PROGRAM_VERSION, crawl_id)
+        format!("multiplayer_dungeons/v{}/{}", PROGRAM_VERSION, crawl_id)
     }
     pub fn player_multiplayer_dungeon_manifest(user_id: &str) -> String {
         format!(
-            "/users/{}/v{}/multiplayer_dungeon_manifest",
+            "users/{}/v{}/multiplayer_dungeon_manifest",
             user_id, PROGRAM_VERSION
         )
     }
     pub fn player_dungeon(user_id: &str) -> String {
-        format!("/users/{}/v{}/dungeon", user_id, PROGRAM_VERSION)
+        format!("users/{}/v{}/dungeon", user_id, PROGRAM_VERSION)
     }
     pub fn player_dungeon_stats(user_id: &str) -> String {
-        format!("/users/{}/v{}/stats", user_id, PROGRAM_VERSION)
+        format!("users/{}/v{}/stats", user_id, PROGRAM_VERSION)
     }
     pub fn player_achievements(user_id: &str) -> String {
-        format!("/users/{}/v{}/achievements", user_id, PROGRAM_VERSION)
+        format!("users/{}/v{}/achievements", user_id, PROGRAM_VERSION)
     }
     pub fn player_leaderboard(user_id: &str) -> String {
-        format!("/users/{}/v{}/leaderboard", user_id, PROGRAM_VERSION)
+        format!("users/{}/v{}/leaderboard", user_id, PROGRAM_VERSION)
     }
 }
 
@@ -52,6 +52,19 @@ pub mod commands {
 pub mod deserializers {
     use super::*;
     use serde_json::json;
+    use server::commands::move_player;
+
+    #[export_name = "deserializers/move_player_command"]
+    unsafe extern "C" fn move_player_command() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("File is empty");
+        }
+        match move_player::MovePlayerCommand::try_from_slice(&bytes) {
+            Ok(dungeon) => os::server::log!("{:#?}", dungeon),
+            Err(err) => os::server::log!("{:#?}", err),
+        };
+    }
 
     #[export_name = "deserializers/dungeon"]
     unsafe extern "C" fn deserialize_dungeon() {
@@ -77,6 +90,85 @@ pub mod deserializers {
         };
         let json = json!(dungeon);
         os::server::log!("{}", json)
+    }
+
+    #[export_name = "deserializers/multiplayer_dungeon"]
+    unsafe extern "C" fn deserialize_multiplayer_dungeon() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("File is empty");
+        }
+        match MultiplayerDungeon::try_from_slice(&bytes) {
+            Ok(multiplayer_dungeon) => os::server::log!("{:#?}", multiplayer_dungeon),
+            Err(err) => os::server::log!("{:#?}", err),
+        };
+    }
+
+    #[export_name = "deserializers/multiplayer_dungeon_manifest"]
+    unsafe extern "C" fn deserialize_multiplayer_dungeon_manifest() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("File is empty");
+        }
+        match u32::try_from_slice(&bytes) {
+            Ok(multiplayer_dungeon_manifest) => {
+                os::server::log!("{:#?}", multiplayer_dungeon_manifest)
+            }
+            Err(err) => os::server::log!("{:#?}", err),
+        };
+    }
+
+    #[export_name = "deserializers/leaderboard"]
+    unsafe extern "C" fn deserialize_leaderboard() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let leaderboard = match Leaderboard::try_from_slice(&bytes) {
+            Ok(leaderboard) => leaderboard,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        os::server::log!("{:#?}", leaderboard)
+    }
+
+    #[export_name = "deserializers/leaderboard_json"]
+    unsafe extern "C" fn deserialize_leaderboard_json() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let leaderboard = match Leaderboard::try_from_slice(&bytes) {
+            Ok(leaderboard) => leaderboard,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        let json = json!(leaderboard);
+        os::server::log!("{}", json)
+    }
+
+    #[export_name = "deserializers/multiplayer_dungeon_channel_in"]
+    unsafe extern "C" fn deserialize_multiplayer_dungeon_channel_in() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let value = match Emote::try_from_slice(&bytes) {
+            Ok(value) => value,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        os::server::log!("{:?}", value)
+    }
+
+    #[export_name = "deserializers/multiplayer_dungeon_channel_out"]
+    unsafe extern "C" fn deserialize_multiplayer_dungeon_channel_out() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let value = match <(String, Emote)>::try_from_slice(&bytes) {
+            Ok(value) => value,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        os::server::log!("{:?}", value)
     }
 }
 

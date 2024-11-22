@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct LeaderboardEntry {
     pub name: String,
     pub score: u32,

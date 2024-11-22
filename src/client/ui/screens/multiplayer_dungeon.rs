@@ -1121,12 +1121,17 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     sprite!("coin", absolute = true, y = y);
     text!("  ${:0>4}", ctx.player.gold; absolute = true, x = 0, y = y + 5, font = Font::L);
 
-    // Allow owner to reset
-    if ctx.player.health == 0 && dungeon.owner == user_id {
+    // Allow players to reset
+    if dungeon.did_all_players_die() {
+        // Emotes
+        let emoji_x = (w as i32 / 2) + 8;
+        let emoji_y = y + 8;
+        render_emoji_toolbar(multiplayer_dungeon_channel, emoji_x, emoji_y);
+
         let t = tick() as f32;
         let cos_16 = ((t / 16.).cos()) + 1.;
         let action_btn_x = w / 2;
-        let action_btn_y = (menubar_y + 3) - (cos_16 as i32);
+        let action_btn_y = (menubar_y - 6) - (cos_16 as i32);
         let action_btn_w = (w / 2) - 4;
         let action_btn_h = 24;
         rect!(
@@ -1192,10 +1197,15 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     }
     // Next floor button
     else if dungeon.is_exit(ctx.player.x, ctx.player.y) {
+        // Emotes
+        let emoji_x = (w as i32 / 2) + 8;
+        let emoji_y = y + 8;
+        render_emoji_toolbar(multiplayer_dungeon_channel, emoji_x, emoji_y);
+
         let t = tick() as f32;
         let cos_16 = ((t / 16.).cos()) + 1.;
         let action_btn_x = w / 2;
-        let action_btn_y = (menubar_y + 3) - (cos_16 as i32);
+        let action_btn_y = (menubar_y - 6) - (cos_16 as i32);
         let action_btn_w = (w / 2) - 4;
         let action_btn_h = 24;
         rect!(
@@ -1261,43 +1271,9 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     // CTA: Find exit
     else if dungeon.exit.is_some() {
         // Emotes
-        let mut emoji_x = (w as i32 / 2) + 8;
+        let emoji_x = (w as i32 / 2) + 8;
         let emoji_y = y + 8;
-        sprite!("emoji_love", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Love;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_cry", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Sob;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_angry", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Anger;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_thinking", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Thinking;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
+        render_emoji_toolbar(multiplayer_dungeon_channel, emoji_x, emoji_y);
 
         let cta_x = w / 2;
         let cta_y = menubar_y;
@@ -1331,43 +1307,10 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     }
     // CTA: Get the key
     else {
-        let mut emoji_x = (w as i32 / 2) + 8;
+        // Emotes
+        let emoji_x = (w as i32 / 2) + 8;
         let emoji_y = y + 8;
-        sprite!("emoji_love", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Love;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_cry", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Sob;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_angry", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Anger;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
-        emoji_x += 14;
-        sprite!("emoji_thinking", absolute = true, x = emoji_x, y = emoji_y);
-        if clickable(emoji_x, emoji_y, 8, 8) {
-            if let Channel::Connected(ref conn) = multiplayer_dungeon_channel {
-                let emote = Emote::Thinking;
-                let msg = emote.try_to_vec().unwrap();
-                let _ = conn.send(&msg);
-            }
-        }
+        render_emoji_toolbar(multiplayer_dungeon_channel, emoji_x, emoji_y);
 
         let cta_x = w / 2;
         let cta_y = menubar_y;
@@ -1824,4 +1767,45 @@ pub fn wrap_text(text: &str, max_width: u32, font: Font) -> Vec<String> {
     }
 
     lines
+}
+
+pub fn render_emoji_toolbar(channel: Channel, x: i32, y: i32) {
+    // Emotes
+    let mut x = x;
+    let y = y;
+    sprite!("emoji_love", absolute = true, x = x, y = y);
+    if clickable(x, y, 8, 8) {
+        if let Channel::Connected(ref conn) = channel {
+            let emote = Emote::Love;
+            let msg = emote.try_to_vec().unwrap();
+            let _ = conn.send(&msg);
+        }
+    }
+    x += 14;
+    sprite!("emoji_cry", absolute = true, x = x, y = y);
+    if clickable(x, y, 8, 8) {
+        if let Channel::Connected(ref conn) = channel {
+            let emote = Emote::Sob;
+            let msg = emote.try_to_vec().unwrap();
+            let _ = conn.send(&msg);
+        }
+    }
+    x += 14;
+    sprite!("emoji_angry", absolute = true, x = x, y = y);
+    if clickable(x, y, 8, 8) {
+        if let Channel::Connected(ref conn) = channel {
+            let emote = Emote::Anger;
+            let msg = emote.try_to_vec().unwrap();
+            let _ = conn.send(&msg);
+        }
+    }
+    x += 14;
+    sprite!("emoji_thinking", absolute = true, x = x, y = y);
+    if clickable(x, y, 8, 8) {
+        if let Channel::Connected(ref conn) = channel {
+            let emote = Emote::Thinking;
+            let msg = emote.try_to_vec().unwrap();
+            let _ = conn.send(&msg);
+        }
+    }
 }

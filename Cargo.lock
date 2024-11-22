@@ -265,9 +265,9 @@ dependencies = [
 
 [[package]]
 name = "turbo-genesis-sdk"
-version = "1.6.0-alpha.15"
+version = "1.6.0-alpha.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63e469ed7cc51aef01f57ea68f540411baaa1d0747ab525682262d335fb27b5f"
+checksum = "8e35669b1904f66686f7d7eac7ae2066a269db6e3aa421952674a62d15290cd7"
 dependencies = [
  "base64",
  "binary-layout",
