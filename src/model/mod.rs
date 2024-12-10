@@ -72,6 +72,9 @@ pub use player_achievements::*;
 mod raindrop;
 pub use raindrop::*;
 
+mod snowflake;
+pub use snowflake::*;
+
 mod treasure;
 pub use treasure::*;
 

@@ -28,6 +28,8 @@ pub enum MonsterKind {
     SpectralGhost,
     Zombie,
     EvilTurbi,
+    IceYeti,
+    Snowman,
 }
 impl MonsterKind {
     pub const ALL: &'static [Self] = &[
@@ -42,6 +44,8 @@ impl MonsterKind {
         Self::SpectralGhost,
         Self::Zombie,
         Self::EvilTurbi,
+        Self::IceYeti,
+        Self::Snowman,
     ];
     pub fn by_index(n: usize) -> Self {
         match n % 10 {
@@ -56,6 +60,8 @@ impl MonsterKind {
             8 => Self::SpectralGhost,
             9 => Self::Zombie,
             10 => Self::EvilTurbi,
+            11 => Self::IceYeti,
+            12 => Self::Snowman,
             _ => unreachable!(),
         }
     }
@@ -72,6 +78,25 @@ impl MonsterKind {
             Self::SpectralGhost => "S. Ghost",
             Self::Zombie => "Zombie",
             Self::EvilTurbi => "E. Turbi",
+            Self::IceYeti => "Ice Yeti",
+            Self::Snowman => "Snowman",
+        }
+    }
+    pub fn stats(&self) -> (u32, u32) {
+        // (hp, strength)
+        match self {
+            Self::OrangeGoblin => (5, 1),
+            Self::GreenGoblin => (2, 1),
+            Self::RedBlob => (3, 2),
+            Self::YellowBlob => (2, 1),
+            Self::Shade => (3, 2),
+            Self::Spider => (4, 2),
+            Self::Ghost => (2, 2),
+            Self::Zombie => (3, 3),
+            Self::EvilTurbi => (3, 3),
+            Self::IceYeti => (6, 2),
+            Self::Snowman => (3, 3),
+            _ => (1, 1),
         }
     }
 }

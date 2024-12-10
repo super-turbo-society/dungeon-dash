@@ -434,6 +434,26 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
         let x = entity.x.get() + entity.offset_x.get();
         let y = entity.y.get() + entity.offset_y.get() - 6;
         match monster.kind {
+            MonsterKind::IceYeti => {
+                ellipse!(
+                    x = x + 2,
+                    y = y + 8,
+                    w = TILE_SIZE - 4,
+                    h = TILE_SIZE - 4,
+                    color = SHADOW_COLOR,
+                );
+                sprite!("ice_yeti", x = x, y = y, fps = fps::FAST, opacity = opacity);
+            }
+            MonsterKind::Snowman => {
+                ellipse!(
+                    x = x + 2,
+                    y = y + 8,
+                    w = TILE_SIZE - 4,
+                    h = TILE_SIZE - 4,
+                    color = SHADOW_COLOR,
+                );
+                sprite!("snowman", x = x, y = y, fps = fps::FAST, opacity = opacity);
+            }
             MonsterKind::BlueBlob => {
                 ellipse!(
                     x = x + 1,

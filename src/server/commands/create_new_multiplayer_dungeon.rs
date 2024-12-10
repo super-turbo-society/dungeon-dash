@@ -149,10 +149,15 @@ unsafe extern "C" fn exec() -> usize {
             // Create the dungeon
             let w = 5;
             let h = 5;
+            let is_winter = true;
             dungeon = MultiplayerDungeon {
                 owner: dungeon.owner,
                 crawl_id: crawl_id,
-                theme: DungeonThemeKind::Castle,
+                theme: if is_winter {
+                    DungeonThemeKind::Arctic
+                } else {
+                    DungeonThemeKind::Castle
+                },
                 floor: 0,
                 round: 0,
                 turn: 0,
@@ -247,8 +252,13 @@ unsafe extern "C" fn exec() -> usize {
             }
 
             // Update dungeon theme
+            let is_winter = true;
             let i = os::server::random_number::<usize>();
-            let theme = DungeonThemeKind::KINDS[i % DungeonThemeKind::KINDS.len()];
+            let theme = if is_winter {
+                DungeonThemeKind::WINTER[i % DungeonThemeKind::WINTER.len()]
+            } else {
+                DungeonThemeKind::ALL[i % DungeonThemeKind::ALL.len()]
+            };
             dungeon.theme = theme;
 
             // Embiggen every 3 floors
@@ -345,8 +355,23 @@ unsafe extern "C" fn exec() -> usize {
                 (1, MonsterKind::RedBlob),
                 (2, MonsterKind::Spider),
             ],
+            DungeonThemeKind::IceCave => &[
+                (3, MonsterKind::GreenGoblin),
+                (2, MonsterKind::Ghost),
+                (1, MonsterKind::BlueBlob),
+            ],
+            DungeonThemeKind::Arctic => &[
+                (3, MonsterKind::GreenGoblin),
+                (2, MonsterKind::Shade),
+                (1, MonsterKind::Spider),
+            ],
         };
         let mut monster_weights = monster_weights.to_vec();
+
+        let is_winter = true;
+        if is_winter {
+            monster_weights.push((1, MonsterKind::Snowman));
+        }
 
         // After level 20, Evil Turbi will probably show up
         if dungeon.floor + 1 >= 20 {
@@ -371,18 +396,7 @@ unsafe extern "C" fn exec() -> usize {
                     }
                 }
                 // Define monster stats based on the selected kind
-                let (health, strength) = match selected_monster {
-                    MonsterKind::OrangeGoblin => (5, 1),
-                    MonsterKind::GreenGoblin => (2, 1),
-                    MonsterKind::RedBlob => (3, 2),
-                    MonsterKind::YellowBlob => (2, 1),
-                    MonsterKind::Shade => (3, 2),
-                    MonsterKind::Spider => (4, 2),
-                    MonsterKind::Ghost => (2, 2),
-                    MonsterKind::Zombie => (3, 3),
-                    MonsterKind::EvilTurbi => (3, 3),
-                    _ => (1, 1),
-                };
+                let (health, strength) = selected_monster.stats();
                 let monster = Monster {
                     x,
                     y,

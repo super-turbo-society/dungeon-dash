@@ -8,7 +8,7 @@ pub const MOVE_Y_OFFSET: i32 = 6;
 pub const MOVE_X_OFFSET: i32 = 6;
 // pub const EXEC_TIMEOUT_DUR: usize = 32;
 pub const EXEC_TIMEOUT_DUR: usize = 16;
-pub const SHADOW_COLOR: u32 = 0x000000dd;
+pub const SHADOW_COLOR: u32 = 0x000000bb;
 pub const BTN_PRIMARY_COLOR: u32 = 0x1e7061ff;
 pub const BTN_SECONDARY_COLOR: u32 = 0x524c52ff; //0x293c8bff;
 pub const BTN_NEGATIVE_COLOR: u32 = 0x81090aff;
@@ -40,6 +40,7 @@ pub fn initialize() -> LocalState {
         particles: vec![],
         clouds: vec![],
         raindrops: vec![],
+        snowflakes: vec![],
         achievements_modal: None,
         last_crawl_achievements_modal: 0,
         show_stats_modal: false,
@@ -51,20 +52,32 @@ pub fn render() {
     // Load the game state
     let mut state = LocalState::load();
 
-    // Clear the screen
-    clear(0x0e071bff);
-
     // Draw background
     let [w, h] = canvas_size!();
-    sprite!(
-        "skull_pattern",
-        w = w,
-        h = h,
-        tx = (tick() / 4) as u32,
-        ty = (tick() / 4) as u32,
-        repeat = true,
-        absolute = true,
-    );
+    let is_winter = true; // TODO: timestamp-based
+    if is_winter {
+        clear(0x000044ff);
+        sprite!(
+            "snowflake_pattern",
+            w = w,
+            h = h,
+            tx = (tick() / 4) as u32,
+            ty = (tick() / 4) as u32,
+            repeat = true,
+            absolute = true,
+        );
+    } else {
+        clear(0x0e071bff);
+        sprite!(
+            "skull_pattern",
+            w = w,
+            h = h,
+            tx = (tick() / 4) as u32,
+            ty = (tick() / 4) as u32,
+            repeat = true,
+            absolute = true,
+        );
+    }
 
     // Get user ID
     let Some(user_id) = os::client::user_id() else {

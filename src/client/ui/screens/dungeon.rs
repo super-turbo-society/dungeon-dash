@@ -335,6 +335,26 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         let x = entity.x.get() + entity.offset_x.get();
         let y = entity.y.get() + entity.offset_y.get() - 6;
         match monster.kind {
+            MonsterKind::IceYeti => {
+                ellipse!(
+                    x = x + 2,
+                    y = y + 8,
+                    w = TILE_SIZE - 4,
+                    h = TILE_SIZE - 4,
+                    color = SHADOW_COLOR,
+                );
+                sprite!("ice_yeti", x = x, y = y, fps = fps::FAST, opacity = opacity);
+            }
+            MonsterKind::Snowman => {
+                ellipse!(
+                    x = x + 2,
+                    y = y + 8,
+                    w = TILE_SIZE - 4,
+                    h = TILE_SIZE - 4,
+                    color = SHADOW_COLOR,
+                );
+                sprite!("snowman", x = x, y = y, fps = fps::FAST, opacity = opacity);
+            }
             MonsterKind::BlueBlob => {
                 ellipse!(
                     x = x + 1,
@@ -762,6 +782,40 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
                 color = 0xffffff60,
                 absolute = true,
             ); // Render the raindrop
+        }
+    }
+
+    // Snow weather effect
+    if let DungeonThemeKind::Arctic | DungeonThemeKind::IceCave = dungeon.theme {
+        // Generate new snowflakes intermittently
+        if rand() % 4 == 0 {
+            let snowflake = Snowflake {
+                x: (rand() % w) as f32,
+                y: 0.0,
+                vy: ((rand() % 3 + 1) as f32) * 0.5,
+                size: (rand() % 4 + 2) as f32,
+                offset: (rand() % 100) as f32, // random offset for horizontal drift
+            };
+            state.snowflakes.push(snowflake);
+        }
+
+        // Update snowflakes
+        state.snowflakes.retain_mut(|flake| {
+            flake.y += flake.vy;
+            // Add a subtle horizontal drift using the offset
+            flake.x += (tick() as f32 / 60.0 + flake.offset).sin() * 0.4;
+            flake.y < (h as f32) + flake.size
+        });
+
+        // Draw snowflakes
+        for flake in &state.snowflakes {
+            circ!(
+                absolute = true,
+                x = flake.x,
+                y = flake.y,
+                d = flake.size,
+                color = 0xffffffaa
+            );
         }
     }
 

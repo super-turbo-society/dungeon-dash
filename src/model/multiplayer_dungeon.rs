@@ -674,40 +674,137 @@ impl MultiplayerDungeon {
                             (dir, mx, my)
                         }
                     }
+                    MonsterKind::IceYeti => {
+                        // Move every other turn
+                        if self.turn % 2 != 0 {
+                            continue;
+                        }
+
+                        let dx = ctx.player.x - mx;
+                        let dy = ctx.player.y - my;
+
+                        // Attempt to move up to 2 spaces towards player
+                        let steps = 2.min(dx.abs().max(dy.abs()));
+
+                        let mut new_mx = mx;
+                        let mut new_my = my;
+                        let mut dir = monster.direction;
+
+                        for s in (1..=steps).rev() {
+                            let (try_dir, try_x, try_y) =
+                                match (dx.abs() > dy.abs(), dx > 0, dy > 0) {
+                                    (false, _, false) => (Direction::Up, mx, my - s),
+                                    (false, _, true) => (Direction::Down, mx, my + s),
+                                    (true, false, _) => (Direction::Left, mx - s, my),
+                                    (true, true, _) => (Direction::Right, mx + s, my),
+                                };
+
+                            if !self.is_position_occupied(try_x, try_y) {
+                                new_mx = try_x;
+                                new_my = try_y;
+                                dir = try_dir;
+                                break;
+                            }
+                        }
+
+                        // If no change occurred, fallback to previous single-step logic
+                        if new_mx == mx && new_my == my {
+                            let x_move = if dx < 0 {
+                                (Direction::Left, mx - 1, my)
+                            } else {
+                                (Direction::Right, mx + 1, my)
+                            };
+                            let y_move = if dy < 0 {
+                                (Direction::Up, mx, my - 1)
+                            } else {
+                                (Direction::Down, mx, my + 1)
+                            };
+
+                            let moves = if dx.abs() > dy.abs() {
+                                [x_move, y_move]
+                            } else {
+                                [y_move, x_move]
+                            };
+
+                            if let Some(next) = moves
+                                .iter()
+                                .find(|(_, x, y)| !self.is_position_occupied(*x, *y))
+                                .copied()
+                            {
+                                next
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            (dir, new_mx, new_my)
+                        }
+                    }
+                    MonsterKind::Snowman => {
+                        // Move every other turn
+                        if self.turn % 2 != 0 {
+                            continue;
+                        }
+
+                        // Moves towards the exit, the stairs, or the player
+                        let mut next = (monster.direction, mx, my);
+                        for (tx, ty) in [
+                            self.exit.unwrap_or((ctx.player.x, ctx.player.y)),
+                            self.exit_key.unwrap_or((ctx.player.x, ctx.player.y)),
+                            (ctx.player.x, ctx.player.y),
+                        ] {
+                            let dx = tx - mx;
+                            let dy = ty - my;
+
+                            let x = if dx < 0 {
+                                (Direction::Left, mx - 1, my)
+                            } else {
+                                (Direction::Right, mx + 1, my)
+                            };
+                            let y = if dy < 0 {
+                                (Direction::Up, mx, my - 1)
+                            } else {
+                                (Direction::Down, mx, my + 1)
+                            };
+
+                            let moves = if dx.abs() > dy.abs() { [x, y] } else { [y, x] };
+
+                            let Some((d, x, y)) = moves
+                                .iter()
+                                .find(|(_, x, y)| !self.is_position_occupied(*x, *y))
+                                .copied()
+                            else {
+                                continue;
+                            };
+                            next = (d, x, y);
+                        }
+                        next
+                    }
                     _ => {
                         // Moves towards the player each turn
                         let dx = ctx.player.x - mx;
                         let dy = ctx.player.y - my;
 
-                        let move_y = || {
-                            if dy < 0 {
-                                (Direction::Up, mx, my - 1)
-                            } else {
-                                (Direction::Down, mx, my + 1)
-                            }
-                        };
-                        let move_x = || {
-                            if dx < 0 {
-                                (Direction::Left, mx - 1, my)
-                            } else {
-                                (Direction::Right, mx + 1, my)
-                            }
-                        };
-                        let all = if dx.abs() > dy.abs() {
-                            [move_x(), move_y()]
+                        let x = if dx < 0 {
+                            (Direction::Left, mx - 1, my)
                         } else {
-                            [move_y(), move_x()]
+                            (Direction::Right, mx + 1, my)
                         };
-                        // Find the first unoccupied position
-                        let Some((dir, mx, my)) = all
-                            .into_iter()
-                            .find(|a| !self.is_position_occupied(a.1, a.2))
-                        else {
-                            os::server::log!("{:?} is blocked", monster.kind);
-                            continue;
+                        let y = if dy < 0 {
+                            (Direction::Up, mx, my - 1)
+                        } else {
+                            (Direction::Down, mx, my + 1)
                         };
 
-                        (dir, mx, my)
+                        let moves = if dx.abs() > dy.abs() { [x, y] } else { [y, x] };
+
+                        let Some(next) = moves
+                            .iter()
+                            .find(|(_, x, y)| !self.is_position_occupied(*x, *y))
+                            .copied()
+                        else {
+                            continue;
+                        };
+                        next
                     }
                 };
 
