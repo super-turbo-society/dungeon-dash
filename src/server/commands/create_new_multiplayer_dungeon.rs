@@ -88,8 +88,8 @@ unsafe extern "C" fn exec() -> usize {
                             player: Player {
                                 x,
                                 y,
-                                health: 8,
-                                max_health: 8,
+                                health: 10,
+                                max_health: 10,
                                 strength: 1,
                                 gold: 0,
                                 direction: Direction::Down,

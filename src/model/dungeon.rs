@@ -43,8 +43,14 @@ impl Dungeon {
         }
 
         if self.is_obstacle(new_x, new_y) {
-            log("P1 cannot move through obstacle");
-            return false;
+            let did_kill_super_ghost = self
+                .monsters
+                .iter()
+                .any(|m| m.kind == MonsterKind::SpectralGhost && m.health == 0);
+            if !did_kill_super_ghost {
+                log("P1 cannot move through obstacle");
+                return false;
+            }
         }
 
         // do an attack if cooldown
@@ -87,32 +93,54 @@ impl Dungeon {
 
             // If all monsters are defeated, spawn a treasure
             if self.monsters.iter().all(|m| m.health == 0) {
-                match os::server::random_number::<u8>() % 4 {
-                    3 | 2 => {
-                        self.treasures.push(Treasure {
-                            x: new_x,
-                            y: new_y,
-                            value: 2,
-                            kind: TreasureKind::HealthUp,
-                        });
-                    }
-                    1 => {
-                        self.treasures.push(Treasure {
-                            x: new_x,
-                            y: new_y,
-                            value: 50,
-                            kind: TreasureKind::Gold,
-                        });
-                    }
-                    _ => {
-                        self.treasures.push(Treasure {
-                            x: new_x,
-                            y: new_y,
-                            value: 1,
-                            kind: TreasureKind::Heal,
-                        });
-                    }
+                let is_at_max_health_total_limit = self.player.max_health >= 99;
+                let is_at_max_health_scaling_limit = if self.player.strength > 1 {
+                    self.player.max_health < self.floor + 1
+                } else {
+                    // yeti rage halves the max hp scaling limit
+                    self.player.max_health < (self.floor + 1) / 2
+                };
+                if !is_at_max_health_total_limit && !is_at_max_health_scaling_limit {
+                    self.treasures.push(Treasure {
+                        x: new_x,
+                        y: new_y,
+                        value: 1,
+                        kind: TreasureKind::HealthUp,
+                    });
+                } else {
+                    self.treasures.push(Treasure {
+                        x: new_x,
+                        y: new_y,
+                        value: 2,
+                        kind: TreasureKind::Heal,
+                    });
                 }
+                // match os::server::random_number::<u8>() % 4 {
+                //     3 | 2 => {
+                //         self.treasures.push(Treasure {
+                //             x: new_x,
+                //             y: new_y,
+                //             value: 2,
+                //             kind: TreasureKind::HealthUp,
+                //         });
+                //     }
+                //     1 => {
+                //         self.treasures.push(Treasure {
+                //             x: new_x,
+                //             y: new_y,
+                //             value: 50,
+                //             kind: TreasureKind::Gold,
+                //         });
+                //     }
+                //     _ => {
+                //         self.treasures.push(Treasure {
+                //             x: new_x,
+                //             y: new_y,
+                //             value: 1,
+                //             kind: TreasureKind::Heal,
+                //         });
+                //     }
+                // }
             }
             return true; // Player doesn't move into the monster's position
         }
@@ -228,17 +256,7 @@ impl Dungeon {
                     monster.direction = Direction::Right;
                 }
                 let prev_player_health = player.health;
-                player.health = player.health.saturating_sub(match monster.kind {
-                    MonsterKind::IceYeti => {
-                        // ice yeti has 50% chance to crit
-                        if os::server::random_number::<usize>() % 2 == 0 {
-                            monster.strength
-                        } else {
-                            monster.strength * 2
-                        }
-                    }
-                    _ => monster.strength,
-                });
+                player.health = player.health.saturating_sub(monster.strength);
                 let damage = prev_player_health.abs_diff(player.health);
                 self.increment_stats(DungeonStatKind::DamageTaken, damage);
 
@@ -516,9 +534,19 @@ impl Dungeon {
                     }
                 }
                 MonsterKind::IceYeti => {
-                    // Move every other turn
-                    if self.turn % 2 != 0 {
-                        return true;
+                    match self.floor + 1 >= 75 {
+                        // Stop every third turn
+                        true => {
+                            if self.turn % 3 == 0 {
+                                return true;
+                            }
+                        }
+                        // Move every third turn
+                        false => {
+                            if self.turn % 3 != 0 {
+                                return true;
+                            }
+                        }
                     }
 
                     let dx = player.x - mx;

@@ -85,6 +85,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
     }
 
     // Update player tweens
+    state.players[0].hp.set(dungeon.player.health);
     state.players[0].x.set(dungeon.player.x * TILE_SIZE);
     state.players[0].y.set(dungeon.player.y * TILE_SIZE);
 
@@ -107,6 +108,9 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
         state.monsters.clear();
         for monster in &dungeon.monsters {
             state.monsters.push(Entity {
+                hp: Tween::new(monster.health)
+                    .duration(MOVE_DUR)
+                    .ease(Easing::EaseInBack),
                 x: Tween::new(monster.x * TILE_SIZE)
                     .duration(MOVE_DUR)
                     .ease(Easing::EaseOutSine),
@@ -135,31 +139,20 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
 
             // Monster "nudge" animation
             if !state.turn.done() && entity.x.done() && entity.y.done() {
-                let is_player_on_exit =
-                    dungeon.exit.unwrap_or((-1, -1)) == (dungeon.player.x, dungeon.player.y);
                 let is_monster_stunned = monster.stun_dur > 0;
-                if !is_player_on_exit && !is_monster_stunned {
-                    match monster.direction {
-                        Direction::Up => {
-                            if dungeon.is_player(monster.x, monster.y - 1) {
-                                entity.offset_y.set(-MOVE_Y_OFFSET);
-                            }
-                        }
-                        Direction::Down => {
-                            if dungeon.is_player(monster.x, monster.y + 1) {
-                                entity.offset_y.set(MOVE_Y_OFFSET);
-                            }
-                        }
-                        Direction::Left => {
-                            if dungeon.is_player(monster.x - 1, monster.y) {
-                                entity.offset_x.set(-MOVE_X_OFFSET);
-                            }
-                        }
-                        Direction::Right => {
-                            if dungeon.is_player(monster.x + 1, monster.y) {
-                                entity.offset_x.set(MOVE_X_OFFSET);
-                            }
-                        }
+                let is_player_hit = state.players[0].hp.get() > dungeon.player.health;
+                if is_player_hit && !is_monster_stunned {
+                    if dungeon.is_player(monster.x, monster.y - 1) {
+                        entity.offset_y.set(-MOVE_Y_OFFSET);
+                    }
+                    if dungeon.is_player(monster.x, monster.y + 1) {
+                        entity.offset_y.set(MOVE_Y_OFFSET);
+                    }
+                    if dungeon.is_player(monster.x - 1, monster.y) {
+                        entity.offset_x.set(-MOVE_X_OFFSET);
+                    }
+                    if dungeon.is_player(monster.x + 1, monster.y) {
+                        entity.offset_x.set(MOVE_X_OFFSET);
                     }
                 }
             }
@@ -286,6 +279,8 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
 
     // Draw player
     if dungeon.player.health > 0 {
+        let is_hit = state.players[0].hp.get() > dungeon.player.health;
+        let should_blink = is_hit && tick() % 12 < 6;
         let x = state.players[0].x.get();
         let y = state.players[0].y.get();
         sprite!(
@@ -305,10 +300,22 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &Dungeon) {
             color = SHADOW_COLOR,
         );
         let y = y + state.players[0].offset_y.get() - 4;
-        sprite!("hero", x = x, y = y, fps = fps::FAST);
+        sprite!(
+            "hero",
+            x = x,
+            y = y,
+            fps = fps::FAST,
+            opacity = if should_blink { 0.1 } else { 1.0 }
+        );
         // if user_id == "00000000-0000-0000-0000-000000000000" {
         if user_id == "79d09d42-6f28-4a3c-a99d-1a8544da9572" {
-            sprite!("crown", x = x, y = y, fps = fps::FAST);
+            sprite!(
+                "crown",
+                x = x,
+                y = y,
+                fps = fps::FAST,
+                opacity = if should_blink { 0.1 } else { 1.0 }
+            );
         }
     } else {
         sprite!(

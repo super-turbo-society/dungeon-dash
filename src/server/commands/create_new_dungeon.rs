@@ -48,8 +48,8 @@ unsafe extern "C" fn exec() -> usize {
             player: Player {
                 x: os::server::random_number::<i32>().abs() % w as i32,
                 y: os::server::random_number::<i32>().abs() % h as i32,
-                health: 8,
-                max_health: 8,
+                health: 10,
+                max_health: 10,
                 strength: 1,
                 gold: 0,
                 direction: Direction::Down,
@@ -101,10 +101,10 @@ unsafe extern "C" fn exec() -> usize {
         };
         dungeon.theme = theme;
 
-        // Embiggen every 3 floors
-        if dungeon.floor % 3 == 0 {
-            dungeon.width += 2;
-            dungeon.height += 2;
+        // Embiggen every 4 floors
+        if dungeon.floor % 4 == 0 {
+            dungeon.width += 1;
+            dungeon.height += 1;
         }
 
         // Reset turn
@@ -134,61 +134,82 @@ unsafe extern "C" fn exec() -> usize {
         dungeon
     };
 
+    // YETI RAGE
+    if dungeon.total_stats.monster_kills(MonsterKind::IceYeti) >= 50
+        && dungeon.floor == 19
+        && dungeon.player.max_health <= 10
+    {
+        os::server::log!("YETI RAGE ACTIVATED");
+        dungeon.player.strength = 1 + (dungeon.player.gold / 100);
+    }
+
     // Get the dungeon bounds
     let (max_x, max_y) = dungeon.bounds();
 
-    let magic_ratio = ((max_x * max_y) / 32) as usize;
+    let magic_ratio = ((max_x * max_y) / 40) as usize;
 
     // After first floor, add monsters and treasures
     if dungeon.floor > 0 {
         // Randomize treasures
         os::server::log!("Randomizing monsters...");
-        let num_monsters = 2 + (magic_ratio / 1);
+        let num_monsters = 2 + magic_ratio;
         // Define monsters and their weights
-        let monster_weights: &[(u32, MonsterKind)] = match dungeon.theme {
-            DungeonThemeKind::Castle => &[
-                (2, MonsterKind::BlueBlob),
-                (1, MonsterKind::GreenGoblin),
-                (1, MonsterKind::OrangeGoblin),
-            ],
-            DungeonThemeKind::Crypt => &[
-                (3, MonsterKind::Ghost),
-                (2, MonsterKind::Shade),
-                (1, MonsterKind::Zombie),
-            ],
-            DungeonThemeKind::Pirate => &[
-                (1, MonsterKind::Shade),
-                (2, MonsterKind::OrangeGoblin),
-                (1, MonsterKind::Zombie),
-            ],
-            DungeonThemeKind::Forest => &[
-                (1, MonsterKind::YellowBlob),
-                (1, MonsterKind::RedBlob),
-                (2, MonsterKind::Spider),
-            ],
-            DungeonThemeKind::IceCave => &[
-                (3, MonsterKind::IceYeti),
-                (2, MonsterKind::Spider),
-                (1, MonsterKind::Ghost),
-            ],
-            DungeonThemeKind::Arctic => &[
-                (3, MonsterKind::IceYeti),
-                (3, MonsterKind::GreenGoblin),
-                (1, MonsterKind::Spider),
-            ],
+        let mut monster_weights = vec![];
+        match dungeon.theme {
+            DungeonThemeKind::Castle => {
+                monster_weights.push((2, MonsterKind::BlueBlob));
+                monster_weights.push((1, MonsterKind::GreenGoblin));
+                monster_weights.push((1, MonsterKind::OrangeGoblin));
+            }
+            DungeonThemeKind::Crypt => {
+                monster_weights.push((3, MonsterKind::Ghost));
+                monster_weights.push((2, MonsterKind::Shade));
+                monster_weights.push((1, MonsterKind::Zombie));
+            }
+            DungeonThemeKind::Pirate => {
+                monster_weights.push((1, MonsterKind::Shade));
+                monster_weights.push((2, MonsterKind::OrangeGoblin));
+                monster_weights.push((1, MonsterKind::Zombie));
+            }
+            DungeonThemeKind::Forest => {
+                monster_weights.push((1, MonsterKind::YellowBlob));
+                monster_weights.push((1, MonsterKind::RedBlob));
+                monster_weights.push((2, MonsterKind::Spider));
+            }
+            DungeonThemeKind::IceCave => {
+                monster_weights.push((3, MonsterKind::BlueBlob));
+                monster_weights.push((2, MonsterKind::RedBlob));
+                monster_weights.push((1, MonsterKind::Ghost));
+                if dungeon.floor + 1 >= 50 {
+                    monster_weights.push((3, MonsterKind::Spider));
+                }
+            }
+            DungeonThemeKind::Arctic => {
+                monster_weights.push((3, MonsterKind::BlueBlob));
+                monster_weights.push((3, MonsterKind::GreenGoblin));
+                monster_weights.push((1, MonsterKind::OrangeGoblin));
+                if dungeon.floor + 1 >= 50 {
+                    monster_weights.push((3, MonsterKind::Spider));
+                }
+            }
         };
-
-        let mut monster_weights = monster_weights.to_vec();
 
         let is_winter = true;
         if is_winter {
-            monster_weights.push((1, MonsterKind::Snowman));
+            monster_weights.push((4, MonsterKind::IceYeti));
+            monster_weights.push((2, MonsterKind::Snowman));
         }
 
         // After level 20, Evil Turbi will probably show up
         if dungeon.floor + 1 >= 20 {
             monster_weights.push((3, MonsterKind::EvilTurbi));
         }
+
+        // After level 20, Evil Turbi will probably show up
+        if dungeon.floor + 1 >= 30 {
+            monster_weights.push((3, MonsterKind::EvilTurbi));
+        }
+
         let total_weight: u32 = monster_weights.iter().map(|(weight, _)| *weight).sum();
 
         while dungeon.monsters.len() < num_monsters {
@@ -207,18 +228,28 @@ unsafe extern "C" fn exec() -> usize {
                         break;
                     }
                 }
+
                 // Define monster stats based on the selected kind
                 let (health, strength) = selected_monster.stats();
-                let monster = Monster {
+                let mut monster = Monster {
                     x,
                     y,
                     health,
                     max_health: health,
-                    strength,
+                    strength: strength,
                     direction: Direction::Down,
                     kind: selected_monster,
                     stun_dur: 0,
                 };
+
+                // Yetis power scale with the floor
+                if let MonsterKind::IceYeti = selected_monster {
+                    monster.strength += dungeon.floor / 10;
+                }
+
+                // After level 30, everything has +1 hp
+                monster.strength += dungeon.floor / 30;
+
                 dungeon.monsters.push(monster);
             }
         }

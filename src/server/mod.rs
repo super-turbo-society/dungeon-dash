@@ -145,6 +145,46 @@ pub mod deserializers {
         os::server::log!("{}", json)
     }
 
+    #[export_name = "deserializers/dungeon_stats"]
+    unsafe extern "C" fn deserialize_dungeon_stats() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let data = match DungeonStats::try_from_slice(&bytes) {
+            Ok(data) => data,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        os::server::log!("{:#?}", data)
+    }
+
+    #[export_name = "deserializers/dungeon_stats_json"]
+    unsafe extern "C" fn deserialize_dungeon_stats_json() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let data = match DungeonStats::try_from_slice(&bytes) {
+            Ok(data) => data,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        let json = json!(data);
+        os::server::log!("{}", json)
+    }
+
+    #[export_name = "deserializers/rankings"]
+    unsafe extern "C" fn deserialize_rankings() {
+        let bytes = os::server::get_command_data();
+        if bytes.is_empty() {
+            return os::server::log!("{{}}");
+        }
+        let data = match <BTreeMap<String, u32>>::try_from_slice(&bytes) {
+            Ok(data) => data,
+            Err(err) => return os::server::log!("{:#?}", err),
+        };
+        os::server::log!("{:#?}", data)
+    }
+
     #[export_name = "deserializers/multiplayer_dungeon_channel_in"]
     unsafe extern "C" fn deserialize_multiplayer_dungeon_channel_in() {
         let bytes = os::server::get_command_data();

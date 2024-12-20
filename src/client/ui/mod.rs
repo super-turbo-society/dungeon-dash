@@ -3,6 +3,7 @@ use super::*;
 pub const TILE_SIZE: i32 = 16;
 pub const TURN_DUR: usize = 16;
 pub const FLOOR_DUR: usize = 32;
+pub const HIT_DUR: usize = 64;
 pub const MOVE_DUR: usize = 8;
 pub const MOVE_Y_OFFSET: i32 = 6;
 pub const MOVE_X_OFFSET: i32 = 6;
@@ -15,6 +16,7 @@ pub const BTN_NEGATIVE_COLOR: u32 = 0x81090aff;
 
 fn new_player_entity() -> Entity {
     Entity {
+        hp: Tween::new(0).duration(HIT_DUR).ease(Easing::EaseInBack),
         x: Tween::new(0).duration(MOVE_DUR).ease(Easing::EaseInOutQuad),
         y: Tween::new(0).duration(MOVE_DUR).ease(Easing::EaseInOutQuad),
         offset_x: Tween::new(0)

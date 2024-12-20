@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct Entity {
+    pub hp: Tween<u32>,
     pub x: Tween<i32>,
     pub y: Tween<i32>,
     pub offset_x: Tween<i32>,

@@ -115,6 +115,7 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
 
     // Update player tweens
     for (i, ctx) in dungeon.player.players.values().enumerate() {
+        state.players[i].hp.set(ctx.player.health);
         state.players[i].x.set(ctx.player.x * TILE_SIZE);
         state.players[i].y.set(ctx.player.y * TILE_SIZE);
 
@@ -138,6 +139,9 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
         state.monsters.clear();
         for monster in &dungeon.monsters {
             state.monsters.push(Entity {
+                hp: Tween::new(monster.health)
+                    .duration(MOVE_DUR)
+                    .ease(Easing::EaseInBack),
                 x: Tween::new(monster.x * TILE_SIZE)
                     .duration(MOVE_DUR)
                     .ease(Easing::EaseOutSine),
@@ -167,31 +171,20 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
 
                 // Monster "nudge" animation
                 if !state.turn.done() && entity.x.done() && entity.y.done() {
-                    let is_player_on_exit =
-                        dungeon.exit.unwrap_or((-1, -1)) == (ctx.player.x, ctx.player.y);
                     let is_monster_stunned = monster.stun_dur > 0;
-                    if !is_player_on_exit && !is_monster_stunned {
-                        match monster.direction {
-                            Direction::Up => {
-                                if dungeon.is_player(monster.x, monster.y - 1) {
-                                    entity.offset_y.set(-MOVE_Y_OFFSET);
-                                }
-                            }
-                            Direction::Down => {
-                                if dungeon.is_player(monster.x, monster.y + 1) {
-                                    entity.offset_y.set(MOVE_Y_OFFSET);
-                                }
-                            }
-                            Direction::Left => {
-                                if dungeon.is_player(monster.x - 1, monster.y) {
-                                    entity.offset_x.set(-MOVE_X_OFFSET);
-                                }
-                            }
-                            Direction::Right => {
-                                if dungeon.is_player(monster.x + 1, monster.y) {
-                                    entity.offset_x.set(MOVE_X_OFFSET);
-                                }
-                            }
+                    let is_player_hit = state.players[i].hp.get() < ctx.player.health;
+                    if is_player_hit && !is_monster_stunned {
+                        if dungeon.is_player(monster.x, monster.y - 1) {
+                            entity.offset_y.set(-MOVE_Y_OFFSET);
+                        }
+                        if dungeon.is_player(monster.x, monster.y + 1) {
+                            entity.offset_y.set(MOVE_Y_OFFSET);
+                        }
+                        if dungeon.is_player(monster.x - 1, monster.y) {
+                            entity.offset_x.set(-MOVE_X_OFFSET);
+                        }
+                        if dungeon.is_player(monster.x + 1, monster.y) {
+                            entity.offset_x.set(MOVE_X_OFFSET);
                         }
                     }
                 }
@@ -344,6 +337,8 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
     // Draw players
     for (i, (player_id, ctx)) in dungeon.player.players.iter().enumerate() {
         if ctx.player.health > 0 {
+            let is_hit = state.players[i].hp.get() > ctx.player.health;
+            let should_blink = is_hit && tick() % 12 < 6;
             let x = state.players[i].x.get();
             let y = state.players[i].y.get();
             if player_id == user_id {
@@ -367,14 +362,27 @@ pub fn render(state: &mut LocalState, user_id: &str, dungeon: &MultiplayerDungeo
             let y = y + state.players[i].offset_y.get() - 4;
             sprite!("hero", x = x, y = y, fps = fps::FAST);
             if ctx.next_round > dungeon.round {
-                sprite!("hero", x = x, y = y, fps = fps::FAST, color = 0x000000cc);
+                sprite!(
+                    "hero",
+                    x = x,
+                    y = y,
+                    fps = fps::FAST,
+                    color = 0x000000cc,
+                    opacity = if should_blink { 0.1 } else { 1.0 }
+                );
             }
             let t = tick() / 6 % 8;
             #[rustfmt::skip]
             let yo = if t == 1 || t == 3 { 1 } else if t == 2 { 2 } else { 0 };
             // if user_id == "00000000-0000-0000-0000-000000000000" {
             if user_id == "79d09d42-6f28-4a3c-a99d-1a8544da9572" {
-                sprite!("crown", x = x, y = y + yo, fps = fps::FAST);
+                sprite!(
+                    "crown",
+                    x = x,
+                    y = y + yo,
+                    fps = fps::FAST,
+                    opacity = if should_blink { 0.1 } else { 1.0 }
+                );
             }
             let emote_timeout = 60 * 3;
             match state.players[i].emote {

@@ -94,7 +94,7 @@ impl MonsterKind {
             Self::Ghost => (2, 2),
             Self::Zombie => (3, 3),
             Self::EvilTurbi => (3, 3),
-            Self::IceYeti => (6, 2),
+            Self::IceYeti => (6, 1),
             Self::Snowman => (3, 3),
             _ => (1, 1),
         }

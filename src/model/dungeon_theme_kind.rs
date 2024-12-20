@@ -45,6 +45,14 @@ impl DungeonThemeKind {
         Self::Arctic,
         Self::Arctic,
         Self::Arctic,
+        Self::IceCave,
+        Self::IceCave,
+        Self::IceCave,
+        Self::IceCave,
+        Self::Arctic,
+        Self::Arctic,
+        Self::Arctic,
+        Self::Arctic,
     ];
     pub const THEMES: &'static [DungeonTheme] = &[
         // Castle
