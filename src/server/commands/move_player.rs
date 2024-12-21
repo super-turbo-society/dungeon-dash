@@ -149,27 +149,6 @@ unsafe extern "C" fn exec() -> usize {
         let floor_rankings_filepath = "floor_rankings";
         let mut floor_rankings =
             os::server::read_or!(BTreeMap<String, u32>, floor_rankings_filepath, BTreeMap::new());
-        // for (user_id, floor) in &mut floor_rankings {
-        //     match user_id.as_ref() {
-        //         "11b5dff9-fb1f-45f1-966b-4b8daf04f23c" => *floor = dungeon.floor.max(10),
-        //         "30170022-a3e4-4902-b1a9-c6013acc91de" => *floor = dungeon.floor.max(29),
-        //         "1aee449d-6e01-4d14-a049-611e25651762" => *floor = dungeon.floor.max(5),
-        //         "80c5b359-ebec-4d4a-8555-29ae17e7fdbc" => *floor = dungeon.floor.max(12),
-        //         "8aec2917-35e8-4f7a-b55b-c2a36d8ddc6b" => *floor = dungeon.floor.max(21),
-        //         "8b3b2547-a74d-4068-988a-4378278b6416" => *floor = dungeon.floor.max(5),
-
-        //         "b28da31c-442c-460e-89cb-50d08fc44b1b" => *floor = dungeon.floor.max(51),
-        //         "c0f4704f-d16b-44b2-a6e9-07640b0a75b8" => *floor = dungeon.floor.max(33),
-        //         "c43bfa55-afa0-4dbb-a2a9-730878345e6d" => *floor = dungeon.floor.max(1),
-        //         "ce244460-d3ad-420e-95f1-a097385ab7a6" => *floor = dungeon.floor.max(32),
-        //         "e8a81f83-7f2c-488b-9ed0-82edf68f6f3b" => *floor = dungeon.floor.max(3),
-        //         _ => {
-        //             if *floor > 51 {
-        //                 *floor = 0;
-        //             }
-        //         }
-        //     }
-        // }
         floor_rankings
             .entry(user_id.clone())
             .and_modify(|floor| {
@@ -194,6 +173,7 @@ unsafe extern "C" fn exec() -> usize {
         if yeti_rankings.len() > 100 {
             yeti_rankings.pop_first();
         }
+        yeti_rankings.retain(|_, n| *n > 0);
         os::server::write!(&yeti_rankings_filepath, &yeti_rankings)
             .expect("Could not write yeti_rankings");
     }
