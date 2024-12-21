@@ -135,12 +135,15 @@ unsafe extern "C" fn exec() -> usize {
     };
 
     // YETI RAGE
-    if dungeon.total_stats.monster_kills(MonsterKind::IceYeti) >= 50
-        && dungeon.floor == 19
-        && dungeon.player.max_health <= 10
-    {
-        os::server::log!("YETI RAGE ACTIVATED");
-        dungeon.player.strength = 1 + (dungeon.player.gold / 100);
+    if dungeon.total_stats.monster_kills(MonsterKind::IceYeti) >= 50 {
+        if dungeon.floor == 19 && dungeon.player.max_health <= 10 {
+            os::server::log!("YETI RAGE ACTIVATED");
+            dungeon.player.strength = 1 + (dungeon.player.gold / 100);
+        }
+        if dungeon.floor > 19 && dungeon.player.strength > 1 {
+            os::server::log!("YETI RAGE INCREASED");
+            dungeon.player.strength = 1 + (dungeon.player.gold / 100);
+        }
     }
 
     // Get the dungeon bounds
