@@ -93,14 +93,15 @@ impl Dungeon {
 
             // If all monsters are defeated, spawn a treasure
             if self.monsters.iter().all(|m| m.health == 0) {
-                let is_at_max_health_total_limit = self.player.max_health >= 99;
-                let is_at_max_health_scaling_limit = if self.player.strength > 1 {
-                    self.player.max_health < self.floor + 1
+                let max_hp_limit = 99;
+                let player_max_hp_limit = max_hp_limit.min(if self.player.strength == 1 {
+                    // players w normal strength can get max hp up the current floor
+                    self.floor + 1
                 } else {
-                    // yeti rage halves the max hp scaling limit
-                    self.player.max_health < (self.floor + 1) / 2
-                };
-                if !is_at_max_health_total_limit && !is_at_max_health_scaling_limit {
+                    // players w increased strength can only get max hp 1/2 the current floor
+                    (self.floor + 1) / 2
+                });
+                if self.player.health < player_max_hp_limit {
                     self.treasures.push(Treasure {
                         x: new_x,
                         y: new_y,
